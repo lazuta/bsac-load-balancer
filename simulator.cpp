@@ -4,6 +4,7 @@
 #include <ctime>
 #include <algorithm>
 #include <list>
+#include <cstring>
 #include <conio.h>
 
 using namespace std;
@@ -68,7 +69,7 @@ delayer::delayer() {
 
 bool delayer::empty() {
    	return cnt == 0;    	
-}
+}   
 
 int delayer::size() {
    	return cnt;
@@ -150,16 +151,18 @@ void read_graph(static_flow_graph* graph) {
     for(int i = 0; i < n; ++i) {
 		graph->add_edge(s, i, 0, units[i]->buffer.size());
     }
+}
 
+void calculate_flow(static_flow_graph* graph) {
     //cout << "Flow calculation" << endl;
     print("Flow calculation\n", 2);
-    clock_t cur_time = clock();
+    scheduling_time = clock();
     tau = 1.0 / graph->leftmost_breakpoint((double)sum_perf / task_cnt);
     //cout << "Done" << endl;
     print("Done\n", 2);
     //cout << "Calculation of a control took " << (double)(clock() - cur_time) / CLOCKS_PER_SEC << "s." << endl;
 	print("Flow calculation took ", 2);
-	print((double)(clock() - cur_time) / CLOCKS_PER_SEC, 2);
+	print((double)(scheduling_time = clock() - scheduling_time) / CLOCKS_PER_SEC, 2);
 	print("Number of pushes: ", 2);
 	print(graph->pushes(), 2);
 	print("\n", 2);
@@ -202,6 +205,25 @@ void tick(processing_unit* unit) {
 		}
 	}                   	
 	
+	
+	if(algorithm == CONSENSUS) {
+		clock_t clck = clock();
+		for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
+    		channel* ch = unit->sch->saturation_ratio[i].second;
+			if(unit->buffer.size() * ch->out->perfomance_ptu > 
+    			unit->perfomance_ptu * ch->out->buffer.size()) {
+    			ch->scheduled_load = alpha * (- ch->out->buffer.size() / ch->out->perfomance_ptu
+    				+ unit->buffer.size() / unit->perfomance_ptu);
+    			unit->sch->saturation_ratio[i].first = (double)ch->transferred_load / ch->scheduled_load;        		
+			} else {
+    			ch->scheduled_load = 0;
+    			unit->sch->saturation_ratio[i].first = 1;
+			}
+		//if(ch->scheduled_load) cerr << ch->scheduled_load << "is scheduled to transmit from " << unit->id  << " to " << ch->out->id << endl;
+        }
+    	scheduling_time += (clock() - clck);            	
+		sort(unit->sch->saturation_ratio.begin(), unit->sch->saturation_ratio.end());		
+	}
 	
 	for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
 		channel* ch = unit->sch->saturation_ratio[i].second;
@@ -246,7 +268,6 @@ void tick(processing_unit* unit) {
 	//cerr << "Unit #" << unit->id << " status is " << unit->status << endl;
 }
 
-
 bool tick() {
 	bool done = true;
 	for(int i = 0; i < units.size(); ++i) {
@@ -254,8 +275,24 @@ bool tick() {
 		if(units[i]->status > 1) done = false;
 	}
 	return done;	
+}   
+
+void set_consensus_step(double step) {
+	alpha = step;
 }
 
+void set_balancing_algorithm(char* algorithm_name) {
+	if(strcmp(algorithm_name, "parametric_flow") == 0) {
+		algorithm = PARAMETRIC_FLOW;
+	} else if(strcmp(algorithm_name, "consensus") == 0) {
+		algorithm = CONSENSUS;
+	}
+}
+
+void set_time_output_step(int step) {
+	if(step <= 0) time_output_step = 1;
+	else time_output_step = step;
+}
 
 void simulate(string path) {
 	print(path, 4);
@@ -265,6 +302,16 @@ void simulate(string path) {
 		print("Test doesn't exist\n", 0);		
 		return;
 	}	
+
+	print("Balancing algorithm in use: ", 2);
+	if(algorithm == PARAMETRIC_FLOW) {
+		print("parametric flow\n", 2);
+	} else {
+		print("consensus\n", 2);
+		print("Step size is ", 2);
+		print(alpha, 2);
+		print("\n", 2);
+	}                  	
 
 	static_flow_graph* graph;
 	graph = new static_flow_graph();
@@ -281,25 +328,26 @@ void simulate(string path) {
 	print("\n", 4);
 
     //graph->show(4);
-
+    if(algorithm == PARAMETRIC_FLOW) {
+    	calculate_flow(graph);
 	
-	int num = 0;
-    for(int i = 0; i < n; ++i) {
-    	for(int j = 0; j < units[i]->outgoing_channels.size(); ++j) {
-    		print("Trying to set flow on (", 4);
-    		print(units[i]->id, 4);
-    		print(", ", 4);
-    		print(units[i]->outgoing_channels[j]->id, 4);
-			print(") = ", 4);
-			print(floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation, 4);
-			print("\n", 4);
-			print("Success!!!\n", 4);
-    		units[i]->outgoing_channels[j]->scheduled_load = floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation;
-    		//cerr << "Scheduled load: " << units[i]->outgoing_channels[j]->scheduled_load << " " << graph->get_flow(n + num) * tau << endl;
-    		num++; 
-    	}
-    }       
-
+		int num = 0;
+    	for(int i = 0; i < n; ++i) {
+    		for(int j = 0; j < units[i]->outgoing_channels.size(); ++j) {
+    			print("Trying to set flow on (", 4);
+    			print(units[i]->id, 4);
+    			print(", ", 4);
+    			print(units[i]->outgoing_channels[j]->id, 4);
+				print(") = ", 4);
+				print(floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation, 4);
+				print("\n", 4);
+				print("Success!!!\n", 4);
+    			units[i]->outgoing_channels[j]->scheduled_load = floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation;
+    			//cerr << "Scheduled load: " << units[i]->outgoing_channels[j]->scheduled_load << " " << graph->get_flow(n + num) * tau << endl;
+    			num++; 
+    		}
+    	}       
+    }	
     print("Milestone 2\n", 4);
 
     /*
@@ -314,11 +362,13 @@ void simulate(string path) {
 	while(!tick()) {
 		current_time++;
 		//cerr << current_time << ": tasks resolved = " << task_resolved << endl;
-		print("Simulation time = ", 3);
-		print(current_time, 3);
-		print(": tasks resolved ", 3);
-		print(task_resolved, 3);
-		print("\n", 3);
+		if(current_time % time_output_step == 0) {
+        	print("Simulation time = ", 3);
+			print(current_time, 3);
+			print(": tasks resolved ", 3);
+			print(task_resolved, 3);
+			print("\n", 3);
+		}
 	}
 	current_time++;
 	//cout << current_time << ": tasks resolved = " << task_resolved << " expected = " << task_cnt << ", time without transferring = " << m_t << endl;
@@ -331,6 +381,14 @@ void simulate(string path) {
 	print(", time without transferring = ", 2);
 	print(m_t, 2);
 	print("\n", 2);
+
+	if(algorithm == CONSENSUS) {
+		print("Total scheduling time ", 2);
+		print((double)scheduling_time / CLOCKS_PER_SEC, 2);
+		print("s.(", 2);
+		print((double)scheduling_time, 2);
+		print(")\n", 2);
+	}
 
 
 	int task_left_1 = 0;

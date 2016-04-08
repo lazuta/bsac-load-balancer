@@ -19,6 +19,7 @@ void set_config() {
 	char s[100], t[50];
 	while(fscanf(settings, "%s", s) == 1) {		
 		int tmp;
+		double tmp_d;
 		int equality = 0;
 		while(s[equality] != 0 && s[equality] != '=') {
 			equality++;
@@ -56,6 +57,16 @@ void set_config() {
 			if(sscanf(t, "%d", &tmp) == 1) {
 				task_content_size_variance = tmp;
 			}
+		} else if (strcmp(s, "balancing_algorithm") == 0) {
+			set_balancing_algorithm(t);
+		} else if (strcmp(s, "consensus_step") == 0) {
+			if(sscanf(t, "%lf", &tmp_d) == 1) {
+				set_consensus_step(tmp_d);
+			}
+		} else if (strcmp(s, "time_output_step") == 0) {
+			if(sscanf(t, "%d", &tmp) == 1) {
+				set_time_output_step(tmp);
+			}
 		}
 	}	
 }   
@@ -74,6 +85,7 @@ int main(int argc, char *argv[])  {
 	for(int i = 0; argv[1][i] != 0; ++i) {
 		str.push_back(argv[1][i]);
 	}
+
 	simulate(str);
 
 	return 0;

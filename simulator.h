@@ -2,6 +2,7 @@
 #define SIMULATOR_H
 
 #include <vector>
+#include <time.h>
 #include <string>
 #include "graph.h"
 
@@ -164,6 +165,7 @@ public:
 };
 
 
+enum balancing_algorithm_t {PARAMETRIC_FLOW, CONSENSUS};
 
 /**
  * Simulation global variables.
@@ -171,14 +173,23 @@ public:
 static int task_resolved = 0;
 static double m_t = 0;
 static int task_cnt = 0;
-static double scheduling_time = 0;
 static vector<processing_unit*> units;
 static int sum_perf = 0;
 static int n = 0; // number of processing units.
 static int m = 0; // number of channels.
 static double tau = 0; // expected optimal time.
+static balancing_algorithm_t algorithm = PARAMETRIC_FLOW;
+static double alpha = 1; // consensus step size.
+static clock_t scheduling_time = 0; //this variable is used to store scheduling time of algorithms (in clocks)
+static int time_output_step = 1;
        
 void read_graph(static_flow_graph* graph);
+
+void set_consensus_step(double step);
+
+void set_balancing_algorithm(char* algorithm_name);
+
+void set_time_output_step(int step);
 
 void simulate(string path);
 
