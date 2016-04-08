@@ -2,6 +2,8 @@
 #include "logger.h"
 
 void static_flow_graph::initialize_flow(double L) {
+	pushCounter = 0;
+	relabelCounter = 0;
 	lambda = L;
 	for(int i = 0; i < m; ++i) {
 		cap[i] = cap_a[i] + lambda * cap_b[i];
@@ -30,6 +32,7 @@ void static_flow_graph::decrease_cap(double lambda_dif) {
 }
 
 void static_flow_graph::push(int v, int e, int s, int t) {
+	pushCounter++;
 	if(to[e] != s && to[e] != t && ex[to[e]] == 0) {
 		active_vrtx.push(to[e]);
 	}
@@ -40,7 +43,12 @@ void static_flow_graph::push(int v, int e, int s, int t) {
 	flow[e^1] = -flow[e];	
 }
 
+void static_flow_graph::global_relabeling() {
+	
+}
+
 void static_flow_graph::relabel(int v) {                              	
+	relabelCounter++;
 	int u = -1;
 	for(int i = head[v]; i != -1; i = next[i]) {	
 		if(cap[i] - flow[i] > 0 && (u == -1 || h[u] > h[to[i]])) {
@@ -277,4 +285,12 @@ void static_flow_graph::show(int priority) {
 
 double static_flow_graph::get_flow(int idx) {
 	return flow[2 * idx];
+}
+
+int static_flow_graph::pushes() {
+	return pushCounter;
+}
+
+int static_flow_graph:: relabels() {
+	return relabelCounter;
 }

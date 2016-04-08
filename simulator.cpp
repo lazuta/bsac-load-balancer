@@ -160,6 +160,12 @@ void read_graph(static_flow_graph* graph) {
     //cout << "Calculation of a control took " << (double)(clock() - cur_time) / CLOCKS_PER_SEC << "s." << endl;
 	print("Flow calculation took ", 2);
 	print((double)(clock() - cur_time) / CLOCKS_PER_SEC, 2);
+	print("Number of pushes: ", 2);
+	print(graph->pushes(), 2);
+	print("\n", 2);
+	print("Nubmer of relabels: ", 2);
+	print(graph->relabels(), 2);
+	print("\n", 2);
 	print("s.\n", 2);
 	//cerr << "Calculation of a control took " << (double)(clock() - cur_time) / CLOCKS_PER_SEC << "s." << endl;
 	

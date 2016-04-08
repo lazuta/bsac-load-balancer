@@ -17,6 +17,8 @@ private:
 	double eps;
 	double lambda;
 	queue<int> active_vrtx;
+	int pushCounter;
+	int relabelCounter;
 
 	/**
 	 * Initializes preflow-push algorithm
@@ -101,6 +103,16 @@ public:
 	double get_flow(int idx);
 
 	void show(int priority);
+
+	/**
+	 * Returns the number of pushes last comptutation of flow has used.
+	 */
+	int pushes();
+
+	/**
+	 * Returns the number of relabels last computation of flow has used.
+	 */
+	int relabels();
 };
 
 #endif
