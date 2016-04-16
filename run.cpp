@@ -10,7 +10,8 @@
 #include <string>
 #include "graph.h"
 #include "simulator.h"
-#include "logger.h"
+#include "utils/logger.h"
+
 
 using namespace std;
 
@@ -76,9 +77,6 @@ int main(int argc, char *argv[])  {
 		return 0;
 	}	
 	set_config();
-	print("Log level = ", 3);
-	print(log_level, 3);
-	print("\n", 3);
 
 	srand(time(NULL));
 	string str = "tests/";
