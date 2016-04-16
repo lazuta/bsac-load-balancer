@@ -10,7 +10,8 @@
 using namespace std;
 
 #include "simulator.h"
-#include "logger.h"
+#include "utils/logger.h"
+#include "utils/rational.h"
 
 
 bool scheduler::is_saturated() {
@@ -120,7 +121,7 @@ void read_graph(static_flow_graph* graph) {
 			u->add_task(tsk);
 			load += tsk->processing_time;
 		}
-		m_t = max(m_t, load / u->perfomance_ptu);
+		m_t = m_t >  load / u->perfomance_ptu ? m_t : load / u->perfomance_ptu;
 	}
 	for(int i = 0; i < m; ++i) {
 		int q, w; double c;
@@ -136,7 +137,7 @@ void read_graph(static_flow_graph* graph) {
 		units[q - 1]->add_channel(ch);
 	}	
 
-	graph->initialize_graph(n + 2, 2 * n + m, s, t, 1e-6);
+	graph->initialize_graph(n + 2, 2 * n + m, s, t);
 	
 	for(int i = 0; i < n; ++i) {
 		graph->add_edge(i, t, units[i]->perfomance_ptu / task_processing_time_expectation, 0);
@@ -154,30 +155,22 @@ void read_graph(static_flow_graph* graph) {
 }
 
 void calculate_flow(static_flow_graph* graph) {
-    //cout << "Flow calculation" << endl;
-    print("Flow calculation\n", 2);
+    print("Flow calculation ...\n", 2);
     scheduling_time = clock();
-    tau = 1.0 / graph->leftmost_breakpoint((double)sum_perf / task_cnt);
-    //cout << "Done" << endl;
+    tau = 1 / graph->leftmost_breakpoint((double)sum_perf /  task_cnt);
     print("Done\n", 2);
-    //cout << "Calculation of a control took " << (double)(clock() - cur_time) / CLOCKS_PER_SEC << "s." << endl;
 	print("Flow calculation took ", 2);
 	print((double)(scheduling_time = clock() - scheduling_time) / CLOCKS_PER_SEC, 2);
-	print("Number of pushes: ", 2);
-	print(graph->pushes(), 2);
 	print("\n", 2);
-	print("Nubmer of relabels: ", 2);
-	print(graph->relabels(), 2);
-	print("\n", 2);
-	print("s.\n", 2);
-	//cerr << "Calculation of a control took " << (double)(clock() - cur_time) / CLOCKS_PER_SEC << "s." << endl;
+	graph->print_stats(2);
 	
-	//cout << "Found tau = " << tau << endl;
 	print("Found tau = ", 2);
 	print(tau, 2);
 	print("\n", 2);
 
-	graph->show(4);
+#ifdef DEBUG
+	graph->show(3);
+#endif
 }
 
 void tick(processing_unit* unit) {
@@ -334,15 +327,14 @@ void simulate(string path) {
 		int num = 0;
     	for(int i = 0; i < n; ++i) {
     		for(int j = 0; j < units[i]->outgoing_channels.size(); ++j) {
-    			print("Trying to set flow on (", 4);
+    			print("Setting flow on (", 4);
     			print(units[i]->id, 4);
     			print(", ", 4);
     			print(units[i]->outgoing_channels[j]->id, 4);
 				print(") = ", 4);
-				print(floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation, 4);
+				print(floor((graph->get_flow(n + num) * tau) + 0.5) * task_content_size_expectation, 4);
 				print("\n", 4);
-				print("Success!!!\n", 4);
-    			units[i]->outgoing_channels[j]->scheduled_load = floor(graph->get_flow(n + num) * tau + 0.5) * task_content_size_expectation;
+    			units[i]->outgoing_channels[j]->scheduled_load = floor((graph->get_flow(n + num) * tau) + 0.5) * task_content_size_expectation;
     			//cerr << "Scheduled load: " << units[i]->outgoing_channels[j]->scheduled_load << " " << graph->get_flow(n + num) * tau << endl;
     			num++; 
     		}

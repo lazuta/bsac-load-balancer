@@ -1,27 +1,31 @@
 #include "graph.h"
-#include "logger.h"
+#include "utils/logger.h"
+#include <math.h>
 
 void static_flow_graph::initialize_flow(double L) {
 	pushCounter = 0;
 	relabelCounter = 0;
+	workDone = 0;
+	globalUpdates = 0;
 	lambda = L;
+	double x;
 	for(int i = 0; i < m; ++i) {
 		cap[i] = cap_a[i] + lambda * cap_b[i];
 		flow[i] = 0;
 	}
+	globalUpdateBarrier = (int) (GLOBAL_RELABEL_ARC_COEFF * m + GLOBAL_RELABEL_NODE_COEFF * n);
 }
 
+/**
+ * Breaks active vertices structure.
+ * Have to be combined with global_relabeling.
+ */
 void static_flow_graph::decrease_cap(double lambda_dif) {
 	for(int v = 0; v < n; ++v) {
 		for(int i = head[v]; i != -1; i = next[i]) {
 			cap[i] += lambda_dif * cap_b[i];
 			if(flow[i] <= cap[i]) continue;
 			double val = flow[i] - cap[i];
-			if(to[i] == t || v == s) {
-               	if(ex[v] < eps) {
-					active_vrtx.push(v);
-				}
-			}
 
             ex[v] += val;
 			ex[to[i]] -= val;
@@ -31,37 +35,131 @@ void static_flow_graph::decrease_cap(double lambda_dif) {
 	}
 }
 
+/**
+ * Breaks active vertices structure.
+ * Have to be combined with global_relabeling.
+ */
+void static_flow_graph::update_lambda(double lambda) {
+	for(int v = 0; v < n; ++v) {
+		ex[v] = 0;
+		for(int i = head[v]; i != -1; i = next[i]) {
+			cap[i] = cap_a[i] + lambda * cap_b[i];
+			if(flow[i] > cap[i]) {
+				flow[i] = cap[i];
+				flow[i^1] = -cap[i];
+			}
+			ex[v] -= flow[i];			
+		}
+	}
+}
+
 void static_flow_graph::push(int v, int e, int s, int t) {
 	pushCounter++;
-	if(to[e] != s && to[e] != t && ex[to[e]] == 0) {
-		active_vrtx.push(to[e]);
+	workDone += PUSH_WORK_CONST;
+#ifdef DEBUG
+	print("Pushing from ", 3);
+	print(v, 3);
+	print(" to ", 3);
+	print(to[e], 3);
+	print("\n", 3);
+#endif
+	if(to[e] != s && to[e] != t && ex[to[e]] < eps) {
+		rem(inactive[h[to[e]]], to[e]);
+		maxheight = max(maxheight, h[to[e]]);
+		add_front(active[h[to[e]]], to[e]);
 	}
-	double val = min(ex[v], cap[e] - flow[e]);
+	double val = (ex[v] < cap[e] - flow[e] ? ex[v] : cap[e] - flow[e] );
     ex[v] -= val;
 	ex[to[e]] += val;
 	flow[e] += val;
-	flow[e^1] = -flow[e];	
+	flow[e^1] = -flow[e];
+	if(ex[v] < eps) {
+		rem(active[h[v]], v);
+		add_front(inactive[h[v]], v);
+	}	
 }
 
 void static_flow_graph::global_relabeling() {
-	
+#ifdef DEBUG	
+	print("Starting global relabeling\n", 1);
+#endif
+	globalUpdates++;
+	queue<int> q;
+	q.push(t);
+	for(int i = 0; i < n; ++i) {
+		g[i] = (i == t) || (i == s);
+	}
+	for(int i = 0; i < 2 * n; ++i) {
+		active[i] = inactive[i] = -1;
+	}
+	maxheight = 0;
+	while(!q.empty()) {
+		int temp = q.front();
+		q.pop();
+		for(int i = head[temp]; i != -1; i = next[i]) {
+			if(!g[to[i]] && (cap[i^1] - flow[i^1] > eps)) {
+				h[to[i]] = h[temp] + 1;
+				g[to[i]] = 1;
+				q.push(to[i]);
+				if(ex[to[i]] > 0) {
+					add_front(active[h[to[i]]], to[i]);
+					maxheight = h[to[i]];
+				} else {
+					add_front(inactive[h[to[i]]], to[i]);
+				}
+			}
+		}
+	}
+	q.push(s);
+	while(!q.empty()) {
+		int temp = q.front();
+		q.pop();
+		for(int i = head[temp]; i != -1; i = next[i]) {
+			if(!g[to[i]] && (cap[i^1] - flow[i^1] > eps)) {
+				h[to[i]] = h[temp] + 1;
+				g[to[i]] = 1;
+				if(ex[to[i]] > 0) {
+					add_front(active[h[to[i]]], to[i]);
+					maxheight = h[to[i]];
+				} else {
+					add_front(inactive[h[to[i]]], to[i]);
+				}
+				q.push(to[i]);
+			}
+		}
+	}
 }
 
 void static_flow_graph::relabel(int v) {                              	
+#ifdef DEBUG	
+	print("Relabeling ", 3);
+	print(v, 3);
+#endif	
 	relabelCounter++;
+	workDone += RELABEL_WORK_CONST;
 	int u = -1;
 	for(int i = head[v]; i != -1; i = next[i]) {	
-		if(cap[i] - flow[i] > 0 && (u == -1 || h[u] > h[to[i]])) {
-			u = to[i];
+		if(cap[i] - flow[i] > eps && (u == -1 || h[to[u]] > h[to[i]])) {
+			u = i;
 		}
+		workDone += RELABEL_WORK_PER_ARC;
 	}
-	h[v] = h[u] + 1;	
+#ifdef DEBUG
+	print("\nNew label is ", 3);
+	print(h[to[u]] + 1, 3);
+	print("\n", 3);
+#endif	
+	rem(active[h[v]], v);
+	cur_edge[v] = u;
+	h[v] = h[to[u]] + 1;	
+	add_front(active[h[v]], v);
+	maxheight = max(maxheight, h[v]);
 }
 	
 void static_flow_graph::discharge(int v, int s, int t) {
 	if(head[v] == -1) return;
 	while(1) {
-		if(cap[cur_edge[v]] > flow[cur_edge[v]] && h[v] == h[to[cur_edge[v]]] + 1) {
+		if(cap[cur_edge[v]] - flow[cur_edge[v]] > eps && h[v] == h[to[cur_edge[v]]] + 1) {
 			push(v, cur_edge[v], s, t);
 		}
 		if(ex[v] == 0) break;
@@ -87,9 +185,13 @@ void static_flow_graph::_add_edge(int a, int b, double A, double B) {
 }
 
 
-void static_flow_graph::initialize_graph(int N, int M, int S, int T, double e) {
+void static_flow_graph::initialize_graph(int N, int M, int S, int T) {
    	head = new int[N];
    	prev = new int[N];
+   	nextB = new int[N];
+   	prevB = new int[N];
+   	active = new int [2 * N];
+   	inactive = new int [2 * N];
    	g = new bool[N];
    	cur_edge = new int[N];
    	ex = new double[N];
@@ -111,8 +213,8 @@ void static_flow_graph::initialize_graph(int N, int M, int S, int T, double e) {
     s = S;
     t = T;
     edge = 0;    			
-
-    eps = e;
+	//OBSOLETTE
+    eps = 1e-9;
 }
 
 void static_flow_graph::add_edge(int a, int b, double A, double B) {
@@ -121,9 +223,25 @@ void static_flow_graph::add_edge(int a, int b, double A, double B) {
 }     
     
 double static_flow_graph::max_flow() {
-	while(!active_vrtx.empty()) {
-		discharge(active_vrtx.front(), s, t);
-		active_vrtx.pop();
+#ifdef DEBUG
+	print("Starting maxflow\n", 3);
+#endif	
+	while(1) {
+		while(maxheight > -1 && active[maxheight] == -1) {
+			maxheight--;
+		}
+		if(maxheight == -1) break;
+#ifdef DEBUG		
+		print("Max height = ", 3);
+		print(maxheight, 3);
+		print("\n", 3);
+#endif
+		discharge(active[maxheight], s, t);
+		if(workDone >= nextUpdate) {
+			global_relabeling();
+			nextUpdate += globalUpdateBarrier;
+		}
+		//print_heights(4);
 	}
 	return ex[t];	
 }
@@ -176,22 +294,22 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		cur_edge[i] = head[i];
 	}
 	for(int i = head[s]; i != -1; i = next[i]) {
-		active_vrtx.push(to[i]);
 		ex[to[i]] = cap[i];
 		flow[i] = cap[i];
 		flow[i^1] = -flow[i];
 	}
+	maxheight = 0;
 	lambda = init_lambda;
-	
-	
+	global_relabeling();
+	nextUpdate += globalUpdateBarrier;
+		
     double fl = max_flow();
     double load = 0;
     for(int i = head[s]; i != -1; i = next[i]) {
     	load += cap[i];
     }
-	//cerr << 1 / lambda << " " << fl << " " << load << endl;
-	
-	while(fl - load < -eps) {
+
+	while(fl - load < eps) {
 		queue<int> q;
 		reverse_flow();
 		for(int i = 0; i < n; i++) {
@@ -213,7 +331,9 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 				}
 			}
 		}
-		
+		/**
+		 * PARANOIC
+		 */
 		if(cut_size == 1) break;
 	    g[s] = false;
 		double mult = 0, stat = 0;
@@ -236,16 +356,28 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 			}
 		}
 		reverse_flow();
-		
+
+#ifdef DEBUG
+		print(stat, 1);
+		print(" ", 1);
+		print(mult, 1);
+		print(" New L = ", 1);
+#endif
 		double new_lambda = stat / mult;
-	    //cerr << s_load << " " << cut << " " << tau << " " << new_tau << endl;
-	    //initialize_flow(n, m, new_tau);
-	    decrease_cap(new_lambda - lambda);
+		//cerr << s_load << " " << cut << " " << tau << " " << new_tau << endl;
+	    //decrease_cap(new_lambda - lambda);
+	    update_lambda(new_lambda);    
 	    lambda = new_lambda;
-	    
+	   	
+	   	global_relabeling();
+		nextUpdate += globalUpdateBarrier;
+
 	    fl = max_flow();
 	    //cerr << 1 / lambda << " " << fl << endl;
 	}
+	/*
+	 * PARANOIC
+	 */
 	if(reversed) reverse_flow();
 	
 	/*
@@ -255,6 +387,7 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		}
 	}
 	*/
+
 	return lambda;
 }
 
@@ -264,33 +397,102 @@ void static_flow_graph::show(int priority) {
 	print("\n", priority);
 	print("Number of arcs = ", priority);
 	print(m, priority);
+	print("\nSource node is ", priority);
+	print(s, priority);
+	print("\nSink node is ", priority);
+	print(t, priority);
+	print("\nCurrent lambda = ", priority);
+	print(lambda, priority);
 	print("\n", priority);
-	
+           	
 	for(int i = 0; i < n; ++i) {
 		print(i, priority);
-		print(": ", priority);
+		print(" ex = ", priority);
+		print(ex[i], priority);
+		print(":\n", priority);
 
 		for(int j = head[i]; j != -1; j = next[j]) {
-			print("arc n", priority);
+			print("arc n ", priority);
 			print(j, priority);
 			print(" at ", priority);
 			print(to[j], priority);
-			print(", ", priority);
+			print(" with cap = ", priority);
+			print(cap_a[j], priority);
+			print(" + ", priority);
+			print(lambda, priority);
+			print(" * ", priority);
+			print(cap_b[j], priority);
+			print(" = ", priority);
+			print(cap[j], priority);
+			print(" and flow = ", priority);
+			print(flow[j], priority);
+			print("\n", priority);
 			
 		}
 		print("\n", priority);
 	}
 }
 
+void static_flow_graph::print_heights(int priority) {
+	for(int i = 0; i < 2 * n; ++i) {
+		int temp = active[i];
+		print("Active vertices at heigth ", priority);
+		print(i, priority);
+		print(":", priority);
+		while(temp != -1) {
+			print(temp, priority);
+			print(" ", priority);
+			temp = nextB[temp];
+		}
+		print(" (0-indexed)\n", priority);
+	}
+}
+
+void static_flow_graph::print_stats(int priority) {
+	print("Number of pushes: ", priority);
+	print(pushCounter, priority);
+	print("\n", 2);
+	print("Nubmer of relabels: ", priority);
+	print(relabelCounter, priority);
+	print("\n", 2);
+	print("Nubmer of global relabels: ", priority);
+	print(globalUpdates, priority);
+	print("\n", priority);
+}
+
+void static_flow_graph::add_front(int &head, int node) {
+	nextB[node] = head;
+	prevB[node] = -1;
+	if(head != -1) {
+		prevB[head] = node;
+	}		 
+	head = node;
+}
+
+void static_flow_graph::rem(int &head, int node) {
+	if(prevB[node] != -1) {
+		nextB[prevB[node]] = nextB[node];
+	}
+	if(nextB[node] != -1) {
+		prevB[nextB[node]] = prevB[node];
+	}
+	if(head == node) {
+		head = nextB[node];
+	}
+}                                 
 
 double static_flow_graph::get_flow(int idx) {
 	return flow[2 * idx];
 }
 
-int static_flow_graph::pushes() {
+long long static_flow_graph::pushes() {
 	return pushCounter;
 }
 
-int static_flow_graph:: relabels() {
+long long static_flow_graph:: relabels() {
 	return relabelCounter;
 }
+
+long long static_flow_graph::global_updates() {
+	return globalUpdates;
+}	

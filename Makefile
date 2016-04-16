@@ -1,10 +1,14 @@
-all: run
-run: simulator.o graph.o logger.o
-	g++ -orun.exe simulator.o graph.o logger.o run.cpp
-simulator.o: graph.o logger.o simulator.cpp
-	g++ -c -osimulator.o simulator.cpp
-graph.o: preflow_graph.cpp
-	g++ -c -ograph.o preflow_graph.cpp
-logger.o: logger.cpp
-	g++ -c -ologger.o logger.cpp
+CC = g++
+CCFLAGS = -O4
+all: simulator.o graph.o utils.o
+	$(CC) $(CCFLAGS) -orun.exe simulator.o graph.o logger.o rational.o run.cpp
+simulator.o: graph.o simulator.cpp
+	$(CC) $(CCFLAGS) -c -osimulator.o simulator.cpp
+graph.o: preflow_graph.cpp utils.o
+	$(CC) $(CCFLAGS) -c -ograph.o preflow_graph.cpp
+utils.o: 
+	$(CC) $(CCFLAGS) -c -ologger.o utils/logger.cpp
+	$(CC) $(CCFLAGS) -c -orational.o utils/rational.cpp
+
+
 

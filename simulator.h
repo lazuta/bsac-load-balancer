@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string>
 #include "graph.h"
+#include "utils/rational.h"
 
 
 /**
@@ -172,9 +173,9 @@ enum balancing_algorithm_t {PARAMETRIC_FLOW, CONSENSUS};
  */
 static int task_resolved = 0;
 static double m_t = 0;
-static int task_cnt = 0;
+static long long task_cnt = 0;
 static vector<processing_unit*> units;
-static int sum_perf = 0;
+static long long sum_perf = 0;
 static int n = 0; // number of processing units.
 static int m = 0; // number of channels.
 static double tau = 0; // expected optimal time.
