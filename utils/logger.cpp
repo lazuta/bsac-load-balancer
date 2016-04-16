@@ -22,9 +22,22 @@ void print(const int number, const int priority) {
 	}
 }
 
+void print(const long long number, const int priority) {
+	if(priority <= log_level) {
+		cout << number;
+	}
+}
+
+
 void print(const unsigned int number, const int priority) {
 	if(priority <= log_level) {
 		cout << number;
+	}
+}
+
+void print(const Rational number, const int priority) {
+	if(priority <= log_level) {
+		cout << number.nom << "/" << number.denom;
 	}
 }
 
