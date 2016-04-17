@@ -110,7 +110,7 @@ void static_flow_graph::global_relabeling(int stage) {
 		q.pop();
 		for(int i = head[temp]; i != -1; i = next[i]) {
 			if(!g[to[i]] && (cap[i^1] - flow[i^1] > eps)) {
-//#ifdef DEBUG
+#ifdef DEBUG
 				if(h[to[i]] > h[temp] + 1) {
 					print("Node ", 1);
 					print(to[i], 1);
@@ -124,7 +124,7 @@ void static_flow_graph::global_relabeling(int stage) {
 					print(h[temp] + 1, 1);
 					print("  BADBADBADB\n", 1);
 				}
-//#endif
+#endif
 				h[to[i]] = h[temp] + 1;
 				g[to[i]] = 1;
 				q.push(to[i]);
