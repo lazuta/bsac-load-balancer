@@ -24,6 +24,7 @@ private:
 	long long pushCounter;
 	long long relabelCounter;
 	long long globalUpdates;
+	long long gapCounter;
 	long long workDone;
 	long long globalUpdateBarrier;
 	long long nextUpdate;
@@ -65,17 +66,17 @@ private:
 	/**
 	 * Pushes a flow on arc 'e' incident to 'v' (see preflow-push algorithm).
 	 */
-	void push(int v, int e, int s, int t);
+	void push(int v, int e);
 
 	/**
 	 * Assigns a new height label to a vertex (see preflow-push algorithm).
 	 */
-	void relabel(int v);                              	
+	void relabel(int v, int state);                              	
 	
 	/**
 	 * Discharges a vertex (see preflow-push algorithm)
 	 */
-	void discharge(int v, int s, int t);	
+	void discharge(int v, int stage);	
 	
 	/**
 	 * Adds a single arc (a, b) without a reverse arc.
@@ -83,9 +84,13 @@ private:
 	void _add_edge(int a, int b, double A, double B);
 
 	/**
-	 * Implements the global relabeling heuristic.
+	 * Performs gap heuristic.
+	 */	
+	void gap(int height);
+	/**
+	 * Performs the global relabeling heuristic.
 	 */
-	 void global_relabeling();
+	 void global_relabeling(int stage);
 
 public:
 	/**
@@ -107,6 +112,8 @@ public:
 	 * Discharges the vertices.
 	 */    
     double max_flow();
+
+    double max_flow(int stage);
 
 	
 	/**
@@ -153,6 +160,11 @@ public:
 	 * Returns the number of relabels last computation of flow has used.
 	 */
 	long long relabels();
+
+	/**
+	 * Returns the number of gap heuristics used in last compuation of flow.
+	 */
+	long long gaps();
 
 	/**
 	 * Returns the nubmer of global relabeling heuristic used for last

@@ -1,12 +1,14 @@
 #include "graph.h"
 #include "utils/logger.h"
 #include <math.h>
+//#define DEBUG
 
 void static_flow_graph::initialize_flow(double L) {
 	pushCounter = 0;
 	relabelCounter = 0;
 	workDone = 0;
 	globalUpdates = 0;
+	gapCounter = 0;
 	lambda = L;
 	double x;
 	for(int i = 0; i < m; ++i) {
@@ -53,22 +55,25 @@ void static_flow_graph::update_lambda(double lambda) {
 	}
 }
 
-void static_flow_graph::push(int v, int e, int s, int t) {
+void static_flow_graph::push(int v, int e) {
 	pushCounter++;
 	workDone += PUSH_WORK_CONST;
-#ifdef DEBUG
-	print("Pushing from ", 3);
-	print(v, 3);
-	print(" to ", 3);
-	print(to[e], 3);
-	print("\n", 3);
-#endif
 	if(to[e] != s && to[e] != t && ex[to[e]] < eps) {
 		rem(inactive[h[to[e]]], to[e]);
 		maxheight = max(maxheight, h[to[e]]);
 		add_front(active[h[to[e]]], to[e]);
 	}
 	double val = (ex[v] < cap[e] - flow[e] ? ex[v] : cap[e] - flow[e] );
+#ifdef DEBUG
+	print("Pushing ", 3);
+	print(val, 3);
+	print(" from ", 3);
+	print(v, 3);
+	print(" to ", 3);
+	print(to[e], 3);
+	print("\n", 3);
+#endif
+
     ex[v] -= val;
 	ex[to[e]] += val;
 	flow[e] += val;
@@ -79,13 +84,20 @@ void static_flow_graph::push(int v, int e, int s, int t) {
 	}	
 }
 
-void static_flow_graph::global_relabeling() {
+void static_flow_graph::global_relabeling(int stage) {
 #ifdef DEBUG	
-	print("Starting global relabeling\n", 1);
+	print("Starting global relabeling at stage ", 1);
+	print(stage + 1, 1);
+	print("\n", 1);
+	show(1);
 #endif
 	globalUpdates++;
 	queue<int> q;
-	q.push(t);
+	if(stage == 0) {
+		q.push(t);
+	} else {
+		q.push(s);
+	}
 	for(int i = 0; i < n; ++i) {
 		g[i] = (i == t) || (i == s);
 	}
@@ -98,45 +110,52 @@ void static_flow_graph::global_relabeling() {
 		q.pop();
 		for(int i = head[temp]; i != -1; i = next[i]) {
 			if(!g[to[i]] && (cap[i^1] - flow[i^1] > eps)) {
+//#ifdef DEBUG
+				if(h[to[i]] > h[temp] + 1) {
+					print("Node ", 1);
+					print(to[i], 1);
+					print(" has residual arc with cap ", 1);
+					print(cap[i^1] - flow[i^1], 1);
+					print(" at ", 1);
+					print(temp, 1);
+					print("\n", 1);
+					print(h[to[i]], 1);
+					print(" ", 1);
+					print(h[temp] + 1, 1);
+					print("  BADBADBADB\n", 1);
+				}
+//#endif
 				h[to[i]] = h[temp] + 1;
 				g[to[i]] = 1;
 				q.push(to[i]);
-				if(ex[to[i]] > 0) {
+				if(ex[to[i]] > eps) {
 					add_front(active[h[to[i]]], to[i]);
 					maxheight = h[to[i]];
 				} else {
 					add_front(inactive[h[to[i]]], to[i]);
 				}
-			}
-		}
-	}
-	q.push(s);
-	while(!q.empty()) {
-		int temp = q.front();
-		q.pop();
-		for(int i = head[temp]; i != -1; i = next[i]) {
-			if(!g[to[i]] && (cap[i^1] - flow[i^1] > eps)) {
-				h[to[i]] = h[temp] + 1;
-				g[to[i]] = 1;
-				if(ex[to[i]] > 0) {
-					add_front(active[h[to[i]]], to[i]);
-					maxheight = h[to[i]];
-				} else {
-					add_front(inactive[h[to[i]]], to[i]);
-				}
-				q.push(to[i]);
 			}
 		}
 	}
 }
 
-void static_flow_graph::relabel(int v) {                              	
+void static_flow_graph::relabel(int v, int stage) {                              	
 #ifdef DEBUG	
 	print("Relabeling ", 3);
 	print(v, 3);
+	print("\n", 3);
 #endif	
 	relabelCounter++;
 	workDone += RELABEL_WORK_CONST;
+	rem(active[h[v]], v);
+	
+	if(active[h[v]] == -1 && inactive[h[v]] == -1) {
+#ifdef DEBUG
+      	if(h[v] >= n) print("BADBADBAD!!!!\n", 1);
+#endif		
+		h[v] = n + 1;
+		gap(h[v]);
+	}
 	int u = -1;
 	for(int i = head[v]; i != -1; i = next[i]) {	
 		if(cap[i] - flow[i] > eps && (u == -1 || h[to[u]] > h[to[i]])) {
@@ -145,30 +164,53 @@ void static_flow_graph::relabel(int v) {
 		workDone += RELABEL_WORK_PER_ARC;
 	}
 #ifdef DEBUG
-	print("\nNew label is ", 3);
+	print("New label is ", 3);
 	print(h[to[u]] + 1, 3);
 	print("\n", 3);
 #endif	
-	rem(active[h[v]], v);
 	cur_edge[v] = u;
 	h[v] = h[to[u]] + 1;	
-	add_front(active[h[v]], v);
-	maxheight = max(maxheight, h[v]);
+	if(stage == 1 || h[v] < n) {
+		maxheight = max(maxheight, h[v]);
+		add_front(active[h[v]], v);
+	}
 }
 	
-void static_flow_graph::discharge(int v, int s, int t) {
+void static_flow_graph::discharge(int v, int stage) {
 	if(head[v] == -1) return;
 	while(1) {
 		if(cap[cur_edge[v]] - flow[cur_edge[v]] > eps && h[v] == h[to[cur_edge[v]]] + 1) {
-			push(v, cur_edge[v], s, t);
+			push(v, cur_edge[v]);
 		}
 		if(ex[v] == 0) break;
 		cur_edge[v] = next[cur_edge[v]];
 		if(cur_edge[v] == -1) {
-			relabel(v);
-			cur_edge[v] = head[v];
+			relabel(v, stage);
+			if(stage == 0 && h[v] >= n) {
+				break;
+			}
 		}
 	}
+}
+
+void static_flow_graph::gap(int height) {
+#ifdef DEBUG
+	print("Starting gap\n", 1);
+	print_heights(1);
+#endif	
+	gapCounter++;
+	for(int i = height; i < n; ++i) {
+		while(active[i] != -1) {
+			h[active[i]] = n + 1;
+			active[i] = nextB[active[i]];
+		}
+			
+		while(inactive[i] != -1) {
+			h[inactive[i]] = n + 1;
+			inactive[i] = nextB[inactive[i]];
+		}
+	}
+	maxheight = height - 1;
 }
 	
 void static_flow_graph::_add_edge(int a, int b, double A, double B) {
@@ -222,28 +264,52 @@ void static_flow_graph::add_edge(int a, int b, double A, double B) {
 	_add_edge(b, a, 0, 0);		
 }     
     
-double static_flow_graph::max_flow() {
+double static_flow_graph::max_flow(int stage) {
 #ifdef DEBUG
-	print("Starting maxflow\n", 3);
+	print("Starting maxflow stage ", 3);
+	print(stage + 1, 3);
+	print("\n", 3);
+	//show(1);
 #endif	
 	while(1) {
-		while(maxheight > -1 && active[maxheight] == -1) {
+		while(maxheight >= stage * n && active[maxheight] == -1) {
 			maxheight--;
 		}
-		if(maxheight == -1) break;
+		if(maxheight == -1 || active[maxheight] == -1) break;
 #ifdef DEBUG		
 		print("Max height = ", 3);
 		print(maxheight, 3);
+		print("\nDischarge ", 3);
+		print(active[maxheight], 3);
 		print("\n", 3);
 #endif
-		discharge(active[maxheight], s, t);
+		discharge(active[maxheight], stage);
 		if(workDone >= nextUpdate) {
-			global_relabeling();
+			global_relabeling(stage);
 			nextUpdate += globalUpdateBarrier;
 		}
-		//print_heights(4);
 	}
 	return ex[t];	
+}
+
+double static_flow_graph::max_flow() {
+#ifdef DEBUG   	
+   	print("Stage ", 3);
+   	print(0, 3);
+   	print("\n", 3);
+#endif   	
+   	global_relabeling(0);
+	nextUpdate += globalUpdateBarrier;
+    max_flow(0);
+
+#ifdef DEBUG 
+	print("Stage ", 1);
+   	print(1, 1);
+   	print("\n", 1);
+#endif
+   	global_relabeling(1);
+	nextUpdate += globalUpdateBarrier;
+    return max_flow(1);
 }
 
 	
@@ -285,6 +351,9 @@ bool static_flow_graph::has_flow(int v) {
  * errors will have).
  */
 double static_flow_graph::leftmost_breakpoint(double init_lambda) {
+#ifdef DEBUG
+	print("Stage 1\n", 1);
+#endif	
 	initialize_flow(init_lambda);
 	reverse_flow();
 	
@@ -300,16 +369,12 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 	}
 	maxheight = 0;
 	lambda = init_lambda;
-	global_relabeling();
-	nextUpdate += globalUpdateBarrier;
 		
-    double fl = max_flow();
-    double load = 0;
-    for(int i = head[s]; i != -1; i = next[i]) {
-    	load += cap[i];
-    }
+    global_relabeling(0);
+	nextUpdate += globalUpdateBarrier;
+	double fl = max_flow(0);
 
-	while(fl - load < eps) {
+	while(1) {
 		queue<int> q;
 		reverse_flow();
 		for(int i = 0; i < n; i++) {
@@ -334,7 +399,10 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		/**
 		 * PARANOIC
 		 */
-		if(cut_size == 1) break;
+		if(cut_size == 1) {
+			reverse_flow();
+			break;
+		}
 	    g[s] = false;
 		double mult = 0, stat = 0;
 		for(int i = 0; i < n; ++i) {
@@ -358,26 +426,27 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		reverse_flow();
 
 #ifdef DEBUG
-		print(stat, 1);
-		print(" ", 1);
-		print(mult, 1);
-		print(" New L = ", 1);
+		//print(stat, 1);
+		//print(" ", 1);
+		//print(mult, 1);
 #endif
 		double new_lambda = stat / mult;
 		//cerr << s_load << " " << cut << " " << tau << " " << new_tau << endl;
 	    //decrease_cap(new_lambda - lambda);
 	    update_lambda(new_lambda);    
 	    lambda = new_lambda;
-	   	
-	   	global_relabeling();
+	    
+	   	global_relabeling(0);
 		nextUpdate += globalUpdateBarrier;
-
-	    fl = max_flow();
+		fl = max_flow(0);
 	    //cerr << 1 / lambda << " " << fl << endl;
 	}
-	/*
-	 * PARANOIC
-	 */
+#ifdef DEBUG
+	print("Stage 2\n", 1);
+#endif	
+	global_relabeling(1);
+	nextUpdate += globalUpdateBarrier;
+	max_flow(1);
 	if(reversed) reverse_flow();
 	
 	/*
@@ -409,6 +478,8 @@ void static_flow_graph::show(int priority) {
 		print(i, priority);
 		print(" ex = ", priority);
 		print(ex[i], priority);
+		print(", height = ", priority);
+		print(h[i], priority);
 		print(":\n", priority);
 
 		for(int j = head[i]; j != -1; j = next[j]) {
@@ -436,7 +507,7 @@ void static_flow_graph::show(int priority) {
 void static_flow_graph::print_heights(int priority) {
 	for(int i = 0; i < 2 * n; ++i) {
 		int temp = active[i];
-		print("Active vertices at heigth ", priority);
+		print("Active vertices at height ", priority);
 		print(i, priority);
 		print(":", priority);
 		while(temp != -1) {
@@ -446,6 +517,19 @@ void static_flow_graph::print_heights(int priority) {
 		}
 		print(" (0-indexed)\n", priority);
 	}
+	for(int i = 0; i < 2 * n; ++i) {
+		int temp = inactive[i];
+		print("Inactive vertices at height ", priority);
+		print(i, priority);
+		print(":", priority);
+		while(temp != -1) {
+			print(temp, priority);
+			print(" ", priority);
+			temp = nextB[temp];
+		}
+		print(" (0-indexed)\n", priority);
+	}
+
 }
 
 void static_flow_graph::print_stats(int priority) {
@@ -457,6 +541,9 @@ void static_flow_graph::print_stats(int priority) {
 	print("\n", 2);
 	print("Nubmer of global relabels: ", priority);
 	print(globalUpdates, priority);
+	print("\n", priority);
+	print("Nubmer of gaps: ", priority);
+	print(gapCounter, priority);
 	print("\n", priority);
 }
 
@@ -496,3 +583,7 @@ long long static_flow_graph:: relabels() {
 long long static_flow_graph::global_updates() {
 	return globalUpdates;
 }	
+
+long long static_flow_graph::gaps() {
+	return gapCounter;
+}
