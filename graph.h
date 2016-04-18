@@ -71,8 +71,13 @@ private:
 	/**
 	 * Assigns a new height label to a vertex (see preflow-push algorithm).
 	 */
-	void relabel(int v, int state);                              	
-	
+	void relabel(int v, int stage);
+
+    /**
+     * Gets the node for the next discharge.
+     */
+    int node_for_discharge(int stage);
+
 	/**
 	 * Discharges a vertex (see preflow-push algorithm)
 	 */

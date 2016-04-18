@@ -7,6 +7,7 @@ void static_flow_graph::initialize_flow(double L) {
 	pushCounter = 0;
 	relabelCounter = 0;
 	workDone = 0;
+	nextUpdate = 0;
 	globalUpdates = 0;
 	gapCounter = 0;
 	lambda = L;
@@ -154,7 +155,9 @@ void static_flow_graph::relabel(int v, int stage) {
       	if(h[v] >= n) print("BADBADBAD!!!!\n", 1);
 #endif		
 		h[v] = n + 1;
-		gap(h[v]);
+		cur_edge[v] = head[v];
+		//gap(h[v]);
+		return;
 	}
 	int u = -1;
 	for(int i = head[v]; i != -1; i = next[i]) {	
@@ -174,6 +177,14 @@ void static_flow_graph::relabel(int v, int stage) {
 		maxheight = max(maxheight, h[v]);
 		add_front(active[h[v]], v);
 	}
+}
+
+int static_flow_graph::node_for_discharge(int stage) {
+	while(maxheight >= stage * n && active[maxheight] == -1) {
+		maxheight--;
+	}
+	if(maxheight == -1) return -1;
+	return active[maxheight];
 }
 	
 void static_flow_graph::discharge(int v, int stage) {
@@ -199,7 +210,7 @@ void static_flow_graph::gap(int height) {
 	print_heights(1);
 #endif	
 	gapCounter++;
-	for(int i = height; i < n; ++i) {
+	for(int i = height; i <= maxheight; ++i) {
 		while(active[i] != -1) {
 			h[active[i]] = n + 1;
 			active[i] = nextB[active[i]];
@@ -256,7 +267,7 @@ void static_flow_graph::initialize_graph(int N, int M, int S, int T) {
     t = T;
     edge = 0;    			
 	//OBSOLETTE
-    eps = 1e-9;
+    eps = 1e-14;
 }
 
 void static_flow_graph::add_edge(int a, int b, double A, double B) {
@@ -272,10 +283,7 @@ double static_flow_graph::max_flow(int stage) {
 	//show(1);
 #endif	
 	while(1) {
-		while(maxheight >= stage * n && active[maxheight] == -1) {
-			maxheight--;
-		}
-		if(maxheight == -1 || active[maxheight] == -1) break;
+		int node = node_for_discharge(stage);
 #ifdef DEBUG		
 		print("Max height = ", 3);
 		print(maxheight, 3);
@@ -283,7 +291,8 @@ double static_flow_graph::max_flow(int stage) {
 		print(active[maxheight], 3);
 		print("\n", 3);
 #endif
-		discharge(active[maxheight], stage);
+		if(node == -1) break;
+		discharge(node, stage);
 		if(workDone >= nextUpdate) {
 			global_relabeling(stage);
 			nextUpdate += globalUpdateBarrier;
@@ -293,6 +302,17 @@ double static_flow_graph::max_flow(int stage) {
 }
 
 double static_flow_graph::max_flow() {
+	for(int i = 0; i < n; ++i) {
+		h[i] = n * (i == s);
+		ex[i] = 0;
+		cur_edge[i] = head[i];
+	}
+	for(int i = head[s]; i != -1; i = next[i]) {
+		ex[to[i]] = cap[i];
+		flow[i] = cap[i];
+		flow[i^1] = -flow[i];
+	}
+	maxheight = 0;
 #ifdef DEBUG   	
    	print("Stage ", 3);
    	print(0, 3);

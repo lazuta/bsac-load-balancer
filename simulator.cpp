@@ -350,6 +350,7 @@ void simulate(string path) {
 
 	print("Press any key to begin simulation\n", 2);
 	_getch();
+	print("Simulation started ...\n", 2);
 	int current_time = 0;
 	while(!tick()) {
 		current_time++;
