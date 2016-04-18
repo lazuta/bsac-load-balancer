@@ -149,7 +149,6 @@ void static_flow_graph::relabel(int v, int stage) {
 	relabelCounter++;
 	workDone += RELABEL_WORK_CONST;
 	rem(active[h[v]], v);
-	
 	if(active[h[v]] == -1 && inactive[h[v]] == -1) {
 #ifdef DEBUG
       	if(h[v] >= n) print("BADBADBAD!!!!\n", 1);
@@ -210,13 +209,15 @@ void static_flow_graph::gap(int height) {
 	print_heights(1);
 #endif	
 	gapCounter++;
-	for(int i = height; i <= maxheight; ++i) {
+	for(int i = height + 1; inactive[i] != -1; ++i) {
+		/*
 		while(active[i] != -1) {
 			h[active[i]] = n + 1;
 			active[i] = nextB[active[i]];
 		}
-			
+		*/	
 		while(inactive[i] != -1) {
+			print("Profit!!1\n", 1);
 			h[inactive[i]] = n + 1;
 			inactive[i] = nextB[inactive[i]];
 		}

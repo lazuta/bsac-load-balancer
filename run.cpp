@@ -77,7 +77,6 @@ int main(int argc, char *argv[])  {
 		return 0;
 	}	
 	set_config();
-
 	srand(time(NULL));
 	string str = "tests/";
 	for(int i = 0; argv[1][i] != 0; ++i) {

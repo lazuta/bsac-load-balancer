@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <list>
 #include <cstring>
-#include <conio.h>
 
 using namespace std;
 
@@ -94,9 +93,9 @@ void processing_unit::add_channel(channel* ch) {
 	sch->saturation_ratio.push_back(make_pair(1, ch));
 }
 
-void read_graph(static_flow_graph* graph) {
+void read_graph(static_flow_graph* graph, FILE* f) {
 	int s, t;
-	scanf("%d%d", &n, &m);
+	fscanf(f, "%d%d", &n, &m);
 	s = n, t = n + 1;
 	task_cnt = 0;
 	sum_perf = 0;
@@ -105,7 +104,7 @@ void read_graph(static_flow_graph* graph) {
 
 	for(int i = 0; i < n; ++i) {
 		int p, q;
-		scanf("%d%d", &p, &q);
+		fscanf(f, "%d%d", &p, &q);
 		processing_unit* u = new processing_unit();
 		u->sch = new scheduler();
 		u->id = i;
@@ -125,7 +124,7 @@ void read_graph(static_flow_graph* graph) {
 	}
 	for(int i = 0; i < m; ++i) {
 		int q, w; double c;
-		scanf("%d%d%lf", &q, &w, &c);
+		fscanf(f, "%d%d%lf", &q, &w, &c);
 		
 		channel* ch = new channel();
 		ch->in = units[q - 1];
@@ -288,9 +287,10 @@ void set_time_output_step(int step) {
 }
 
 void simulate(string path) {
+	FILE* _f;
 	print(path, 4);
 	print("\n", 4);	
-	if( ! (freopen(path.c_str(), "r", stdin)) ) {
+	if( ! (_f = (fopen(path.c_str(), "r"))) ) {
 		//cout << "Test doesn't exist" << endl;
 		print("Test doesn't exist\n", 0);		
 		return;
@@ -308,7 +308,7 @@ void simulate(string path) {
 
 	static_flow_graph* graph;
 	graph = new static_flow_graph();
-    read_graph(graph);
+    read_graph(graph, _f);
 
 	print("Milestone 1\n", 4);
 
@@ -348,9 +348,15 @@ void simulate(string path) {
 	}	
 	*/
 
-	print("Press any key to begin simulation\n", 2);
-	_getch();
-	print("Simulation started ...\n", 2);
+	print("Proceed simulation (y/n)?:", 1);
+	char ch;
+	scanf("%c", &ch);
+	if('A' <= ch && ch <= 'Z') ch += 'a' - 'A';
+	if(ch != 'y') {
+		print("Simulation aborted\n", 1);
+		return;
+	}
+	print("Simulation started ...\n", 1);
 	int current_time = 0;
 	while(!tick()) {
 		current_time++;
