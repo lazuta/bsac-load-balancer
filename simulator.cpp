@@ -160,7 +160,7 @@ void calculate_flow(static_flow_graph* graph) {
     print("Done\n", 2);
 	print("Flow calculation took ", 2);
 	print((double)(scheduling_time = clock() - scheduling_time) / CLOCKS_PER_SEC, 2);
-	print("\n", 2);
+	print("sec.\n", 2);
 	graph->print_stats(2);
 	
 	print("Found tau = ", 2);
