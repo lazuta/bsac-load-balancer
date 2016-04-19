@@ -43,21 +43,6 @@ void static_flow_graph::decrease_cap(double lambda_dif) {
  * Have to be combined with global_relabeling.
  */
 void static_flow_graph::update_lambda(double lambda) {
-	/*
-	for(int v = 0; v < n; ++v) {
-		for(int i = head[v]; i != -1; i = next[i]) {
-			cap[i] = cap_a[i] + lambda * cap_b[i];
-			if(flow[i] <= cap[i]) continue;
-			double val = flow[i] - cap[i];
-
-            ex[v] += val;
-			ex[to[i]] -= val;
-			flow[i] -= val;
-			flow[i^1] = -flow[i];
-		}
-	}
-	return;
-	*/
 	for(int i = head[s]; i != -1; i = next[i]) {
     	cap[i] = cap_a[i] + lambda * cap_b[i];
     	if(h[to[i]] >= n) continue;
