@@ -43,16 +43,39 @@ void static_flow_graph::decrease_cap(double lambda_dif) {
  * Have to be combined with global_relabeling.
  */
 void static_flow_graph::update_lambda(double lambda) {
+	/*
 	for(int v = 0; v < n; ++v) {
-		ex[v] = 0;
 		for(int i = head[v]; i != -1; i = next[i]) {
 			cap[i] = cap_a[i] + lambda * cap_b[i];
-			if(flow[i] > cap[i]) {
-				flow[i] = cap[i];
-				flow[i^1] = -cap[i];
-			}
-			ex[v] -= flow[i];			
+			if(flow[i] <= cap[i]) continue;
+			double val = flow[i] - cap[i];
+
+            ex[v] += val;
+			ex[to[i]] -= val;
+			flow[i] -= val;
+			flow[i^1] = -flow[i];
 		}
+	}
+	return;
+	*/
+	for(int i = head[s]; i != -1; i = next[i]) {
+    	cap[i] = cap_a[i] + lambda * cap_b[i];
+    	if(h[to[i]] >= n) continue;
+    	double val = cap[i] - flow[i];
+    	ex[to[i]] += val;
+    	ex[s] -= val;
+    	flow[i] += val;
+    	flow[i^1] -= val;           			
+	}
+
+	for(int i = head[t]; i != -1; i = next[i]) {
+    	cap[i^1] = cap_a[i^1] + lambda * cap_b[i^1];
+    	if(flow[i^1] <= cap[i^1]) continue;
+    	double val = flow[i^1] - cap[i^1];
+        ex[t] -= val;
+		ex[to[i]] += val;
+		flow[i] += val;
+		flow[i^1] = -flow[i];
 	}
 }
 
@@ -153,9 +176,9 @@ void static_flow_graph::relabel(int v, int stage) {
 #ifdef DEBUG
       	if(h[v] >= n) print("BADBADBAD!!!!\n", 1);
 #endif		
-		h[v] = n + 1;
 		cur_edge[v] = head[v];
-		//gap(h[v]);
+		gap(h[v]);
+		h[v] = n + 1;
 		return;
 	}
 	int u = -1;
@@ -217,12 +240,14 @@ void static_flow_graph::gap(int height) {
 		}
 		*/	
 		while(inactive[i] != -1) {
-			print("Profit!!1\n", 1);
+#ifdef DEBUG
+			print("PROFIT!!!\n", 1);		
+#endif
 			h[inactive[i]] = n + 1;
 			inactive[i] = nextB[inactive[i]];
 		}
 	}
-	maxheight = height - 1;
+	//maxheight = height - 1;
 }
 	
 void static_flow_graph::_add_edge(int a, int b, double A, double B) {
@@ -246,6 +271,10 @@ void static_flow_graph::initialize_graph(int N, int M, int S, int T) {
    	prevB = new int[N];
    	active = new int [2 * N];
    	inactive = new int [2 * N];
+   	for(int i = 0; i < 2 * N; ++i) {
+   		active[i] = inactive[i] = -1;
+   	}
+
    	g = new bool[N];
    	cur_edge = new int[N];
    	ex = new double[N];
@@ -285,14 +314,16 @@ double static_flow_graph::max_flow(int stage) {
 #endif	
 	while(1) {
 		int node = node_for_discharge(stage);
+		if(node == -1) break;
 #ifdef DEBUG		
 		print("Max height = ", 3);
 		print(maxheight, 3);
-		print("\nDischarge ", 3);
+		print("\nDischarge node at height ", 3);
+		print(maxheight, 3);
+		print(": ", 3);
 		print(active[maxheight], 3);
 		print("\n", 3);
 #endif
-		if(node == -1) break;
 		discharge(node, stage);
 		if(workDone >= nextUpdate) {
 			global_relabeling(stage);
@@ -310,6 +341,7 @@ double static_flow_graph::max_flow() {
 	}
 	for(int i = head[s]; i != -1; i = next[i]) {
 		ex[to[i]] = cap[i];
+		ex[s] -= cap[i];
 		flow[i] = cap[i];
 		flow[i^1] = -flow[i];
 	}
@@ -385,6 +417,7 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 	}
 	for(int i = head[s]; i != -1; i = next[i]) {
 		ex[to[i]] = cap[i];
+		ex[s] -= cap[i];
 		flow[i] = cap[i];
 		flow[i^1] = -flow[i];
 	}
@@ -528,6 +561,7 @@ void static_flow_graph::show(int priority) {
 void static_flow_graph::print_heights(int priority) {
 	for(int i = 0; i < 2 * n; ++i) {
 		int temp = active[i];
+		if(temp == -1) continue;
 		print("Active vertices at height ", priority);
 		print(i, priority);
 		print(":", priority);
@@ -540,6 +574,7 @@ void static_flow_graph::print_heights(int priority) {
 	}
 	for(int i = 0; i < 2 * n; ++i) {
 		int temp = inactive[i];
+		if(temp == -1) continue;
 		print("Inactive vertices at height ", priority);
 		print(i, priority);
 		print(":", priority);
