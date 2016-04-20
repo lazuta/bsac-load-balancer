@@ -32,7 +32,7 @@ in simulator.h and consists of
 	via the channel per time unit.
 -- Tasks: each task is initially assigned to some node and
 	is stored in corresponding local storage of this node.
-	Each node has two charachteristics. "Context size" -- 
+	Each task has two charachteristics. "Context size" -- 
 	the number of bits to be transferred if the task is to be
 	sent to the neighbouring node; "complexity" -- the number
 	elementary operations needed to precess the task.
@@ -61,8 +61,8 @@ Malkovskii Nikolai, Optimal static network load balancing using
 parametric flow approach // proc. of MICNON'2016 
 
 -- Another algorithm in use is a consensus-based protocol. At each
-simulator tact for each communication channel (i, j) we simply
-sent min(capacity(i, j), alpha * (queue size(i) / performance(i)
+simulator tact for each communication channel (i, j) we 
+send min(capacity(i, j), alpha * (queue size(i) / performance(i)
 - queue size(j) / performance(j)) from the node with the higher 
 load to the node with the lower load. For details see
 Amelina N. et al. Approximate consensus in stochastic networks with 
@@ -72,7 +72,7 @@ application to load balancing //Information Theory, IEEE Transactions on.
 ==================================================================
 Compilation
 ==================================================================
-For compilation simply execute
+For compilation execute
 >make all
 
 Currently, gcc on Linux or MinGW/Cygwin on Windows is required to
@@ -83,7 +83,7 @@ build the project. Other C++ compilers may be used (not tested).
 Launching the simulator
 ==================================================================
 Currently, simulator runs on examples written in "tests/". To launch
-simply execute
+execute
 >run <test name>
 
 ==================================================================
