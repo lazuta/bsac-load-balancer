@@ -9,6 +9,8 @@ graph.o: preflow_graph.cpp utils.o
 utils.o: 
 	$(CC) $(CCFLAGS) -c -ologger.o utils/logger.cpp
 	$(CC) $(CCFLAGS) -c -orational.o utils/rational.cpp
+clean:
+	$(RM) *.o run.exe
 
 
 
