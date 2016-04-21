@@ -200,7 +200,7 @@ void static_flow_graph::discharge(int v, int stage) {
 		if(cap[cur_edge[v]] - flow[cur_edge[v]] > eps && h[v] == h[to[cur_edge[v]]] + 1) {
 			push(v, cur_edge[v]);
 		}
-		if(ex[v] == 0) break;
+		if(ex[v] < eps) break;
 		cur_edge[v] = next[cur_edge[v]];
 		if(cur_edge[v] == -1) {
 			relabel(v, stage);
@@ -415,11 +415,11 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 
 	while(1) {
 		queue<int> q;
-		reverse_flow();
+		//reverse_flow();
 		for(int i = 0; i < n; i++) {
-			g[i] = (i == s);
+			g[i] = (i == t);
 		}			
-		q.push(s);
+		q.push(t);
 		
 		int cut_size = 0;
 		
@@ -429,7 +429,7 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 			//cerr << "q:" << temp << endl;
 			q.pop();
 			for(int i = head[temp]; i != -1; i = next[i]) {
-				if(cap[i] - flow[i] > eps && !g[to[i]]) {
+				if(cap[i^1] - flow[i^1] > eps && !g[to[i]]) {
 					q.push(to[i]);
 					g[to[i]] = true;
 				}
@@ -439,30 +439,30 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		 * PARANOIC
 		 */
 		if(cut_size == 1) {
-			reverse_flow();
+			//reverse_flow();
 			break;
 		}
-	    g[s] = false;
+	    g[t] = false;
 		double mult = 0, stat = 0;
 		for(int i = 0; i < n; ++i) {
 			if(g[i]) {
 				for(int j = head[i]; j != -1; j = next[j]) {
 					if(!g[to[j]]) {
-						stat -= cap_a[j];
-						mult += cap_b[j];
+						stat -= cap_a[j^1];
+						mult += cap_b[j^1];
 					}
 				}
 			}
-			if(i == s) {
+			if(i == t) {
 				for(int j = head[i]; j != -1; j = next[j]) {
 					if(g[to[j]]) {
-						stat += cap_a[j];
-						mult -= cap_b[j];
+						stat += cap_a[j^1];
+						mult -= cap_b[j^1];
 					}
 				}
 			}
 		}
-		reverse_flow();
+		//reverse_flow();
 
 #ifdef DEBUG
 		//print(stat, 1);
@@ -478,7 +478,7 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 	   	global_relabeling(0);
 		nextUpdate += globalUpdateBarrier;
 		fl = max_flow(0);
-	    //cerr << 1 / lambda << " " << fl << endl;
+		//cerr << 1 / lambda << " " << fl << endl;
 	}
 #ifdef DEBUG
 	print("Stage 2\n", 1);
@@ -495,7 +495,6 @@ double static_flow_graph::leftmost_breakpoint(double init_lambda) {
 		}
 	}
 	*/
-
 	return lambda;
 }
 
