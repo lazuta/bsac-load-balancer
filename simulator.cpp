@@ -313,7 +313,7 @@ void simulate(string path) {
 	print("Milestone 1\n", 4);
 
 	print("Number of processing units: ", 4);
-	print(units.size(), 4);
+	print(static_cast<int>(units.size()), 4);
 	print("\n", 4);
 
 	print("Number of communication channels: ", 4);
