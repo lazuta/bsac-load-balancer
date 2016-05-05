@@ -173,11 +173,17 @@ void calculate_flow(static_flow_graph* graph) {
 }
 
 void tick(processing_unit* unit) {
+	int prev = unit->current_progress;
 	unit->current_progress += unit->perfomance_ptu;
 	if(unit->current_task != NULL && unit->current_progress >= unit->current_task->processing_time) {
 		unit->current_progress -= unit->current_task->processing_time;
 		unit->current_task->resolved = true;
 		task_resolved++;
+		print("Task #", 4);
+		print(unit->current_task->id, 4);
+		print(" is resolved (operations done: ", 4);
+		print(unit->current_task->processing_time - prev, 4);
+		print(").\n", 4);
 		//cerr << "Task #" << unit->current_task->id << " is resolved!!! Congratulations!!!" << endl;
 		unit->current_task = NULL;
 	}
@@ -186,6 +192,11 @@ void tick(processing_unit* unit) {
 			unit->current_progress -= unit->buffer.front()->processing_time;
 			unit->buffer.front()->resolved = true;
 			task_resolved++;
+			print("Task #", 4);
+			print(unit->buffer.front()->id, 4);
+			print(" is resolved (operations done: ", 4);
+			print(unit->buffer.front()->processing_time, 4);
+			print(").\n", 4);
 			//cerr << "Task #" << unit->buffer.front()->id << " is resolved!!! Congratulations!!!" << endl;
 			unit->buffer.pop();    				
 		}
@@ -193,6 +204,11 @@ void tick(processing_unit* unit) {
 			unit->current_progress = 0;
 		} else {
 			unit->current_task = unit->buffer.front();
+			print("Task #", 4);
+			print(unit->current_task->id, 4);
+			print(" is currently being resolved (current progress: ", 4);
+			print(unit->current_progress, 4);
+			print(").\n", 4);
 			unit->buffer.pop();
 		}
 	}                   	
@@ -219,9 +235,17 @@ void tick(processing_unit* unit) {
 	
 	for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
 		channel* ch = unit->sch->saturation_ratio[i].second;
+		prev = ch->current_progress;
 		ch->current_progress += ch->capacity_ptu;
 		if(ch->current_task != NULL && ch->current_progress >= ch->current_task->content_size) {
 			ch->current_progress -= ch->current_task->content_size;
+			print("Task #", 4);
+			print(ch->current_task->id, 4);
+			print(" is sent out from ", 4);
+			print(ch->in->id, 4);
+			print(" (bits sent: ", 4);
+            print(ch->current_task->processing_time, 4);
+			print(").\n", 4);
 			ch->out->abstract_delayer->add_task(ch->current_task, ch->delay);
 			ch->current_task = NULL;
 		}                                       
@@ -229,13 +253,27 @@ void tick(processing_unit* unit) {
 			while(!unit->buffer.empty() && ch->transferred_load < ch->scheduled_load && ch->current_progress >= unit->buffer.front()->content_size) {
 				ch->current_progress -= unit->buffer.front()->content_size;
 				ch->transferred_load += unit->buffer.front()->content_size;
-				ch->out->abstract_delayer->add_task(unit->buffer.front(), ch->delay);
+				print("Task #", 4);
+				print(unit->buffer.front()->id, 4);
+				print(" is sent out from ", 4);
+				print(unit->id, 4);
+				print(" (bits sent: ", 4);
+                print(unit->buffer.front()->processing_time, 4);
+				print(").\n", 4);
+			    ch->out->abstract_delayer->add_task(unit->buffer.front(), ch->delay);
 				unit->buffer.pop();
 			}
 			if(unit->buffer.empty() || ch->transferred_load >= ch->scheduled_load) {
 				ch->current_progress = 0;
 			} else {
 				ch->current_task = unit->buffer.front();
+				print("Task #", 4);
+				print(unit->current_task->id, 4);
+				print(" is currently being transferred out from ", 4);
+				print(unit->id, 4);
+				print(" (current progress: ", 4);
+				print(ch->current_progress, 4);
+				print(").\n", 4);
 				ch->transferred_load += unit->buffer.front()->content_size;
 				unit->buffer.pop();
 			}
@@ -251,6 +289,13 @@ void tick(processing_unit* unit) {
 
 	while(!tmp.empty()) {
 		unit->buffer.push(tmp.front());
+		print("Task #", 4);
+		print(tmp.front()->id, 4);
+		print(" is recieved on ", 4);
+		print(unit->id, 4);
+		print(" (bits recieved: ", 4);
+		print(tmp.front()->content_size, 4);
+		print(").\n", 4);
 		//cerr << "Task #" << tmp.front()->id << " is transferred to unit #" << unit->id << endl;
 		tmp.pop_front();
 	}
