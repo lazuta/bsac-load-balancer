@@ -4,6 +4,15 @@ using namespace std;
 
 #include "logger.h"
 
+int length(long long n) {
+	int res = 0;
+	while(n > 0) {
+		res++;
+		n /= 10;
+	}
+	return res;
+}
+
 void print(const string msg, const int priority) {
 	if(priority <= log_level) {
 		cout << msg;
@@ -27,6 +36,21 @@ void print(const long long number, const int priority) {
 		cout << number;
 	}
 }
+
+void print(const int number, const int l, const int priority) {
+	for(int i = 0; i < l - length(number); ++i) {
+		cout << " ";
+	}
+	cout << number;
+}
+		
+void print(const long long number, const int l, const int priority) {
+	for(int i = 0; i < l - length(number); ++i) {
+		cout << " ";
+	}
+	cout << number;
+}
+
 
 
 void print(const unsigned int number, const int priority) {
