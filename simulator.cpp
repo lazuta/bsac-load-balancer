@@ -113,6 +113,15 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		u->perfomance_ptu = p * task_processing_time_expectation;
 		sum_perf += p;
 		double load = 0;
+		print("Unit ", 4);
+		print(i, 4);
+		print(" is assigned with ", 4);
+		print(q, 4);
+		print(" task, id's: ", 4);
+		print(task_cnt, 4);
+		print("-", 4);
+		print(task_cnt + q - 1, 4);
+		print("\n", 4);
 		for(int j = 0; j < q; ++j) {
 			task* tsk = new task();
 			tsk->current_pu = u;
@@ -181,7 +190,9 @@ void tick(processing_unit* unit) {
 		task_resolved++;
 		print("Task #", 4);
 		print(unit->current_task->id, 4);
-		print(" is resolved (operations done: ", 4);
+		print(" is resolved at ", 4);
+		print(unit->id, 4);
+		print(" (operations done: ", 4);
 		print(unit->current_task->processing_time - prev, 4);
 		print(").\n", 4);
 		//cerr << "Task #" << unit->current_task->id << " is resolved!!! Congratulations!!!" << endl;
@@ -194,7 +205,9 @@ void tick(processing_unit* unit) {
 			task_resolved++;
 			print("Task #", 4);
 			print(unit->buffer.front()->id, 4);
-			print(" is resolved (operations done: ", 4);
+			print(" is resolved at ", 4);
+			print(unit->id, 4);
+			print(" (operations done: ", 4);
 			print(unit->buffer.front()->processing_time, 4);
 			print(").\n", 4);
 			//cerr << "Task #" << unit->buffer.front()->id << " is resolved!!! Congratulations!!!" << endl;
@@ -206,7 +219,9 @@ void tick(processing_unit* unit) {
 			unit->current_task = unit->buffer.front();
 			print("Task #", 4);
 			print(unit->current_task->id, 4);
-			print(" is currently being resolved (current progress: ", 4);
+			print(" is currently being resolved at ", 4);
+			print(unit->id, 4);
+			print(" (current progress: ", 4);
 			print(unit->current_progress, 4);
 			print(").\n", 4);
 			unit->buffer.pop();
@@ -244,7 +259,7 @@ void tick(processing_unit* unit) {
 			print(" is sent out from ", 4);
 			print(ch->in->id, 4);
 			print(" (bits sent: ", 4);
-            print(ch->current_task->processing_time, 4);
+            print(ch->current_task->content_size, 4);
 			print(").\n", 4);
 			ch->out->abstract_delayer->add_task(ch->current_task, ch->delay);
 			ch->current_task = NULL;
@@ -258,7 +273,7 @@ void tick(processing_unit* unit) {
 				print(" is sent out from ", 4);
 				print(unit->id, 4);
 				print(" (bits sent: ", 4);
-                print(unit->buffer.front()->processing_time, 4);
+                print(unit->buffer.front()->content_sie, 4);
 				print(").\n", 4);
 			    ch->out->abstract_delayer->add_task(unit->buffer.front(), ch->delay);
 				unit->buffer.pop();
@@ -268,7 +283,7 @@ void tick(processing_unit* unit) {
 			} else {
 				ch->current_task = unit->buffer.front();
 				print("Task #", 4);
-				print(unit->current_task->id, 4);
+				print(ch->current_task->id, 4);
 				print(" is currently being transferred out from ", 4);
 				print(unit->id, 4);
 				print(" (current progress: ", 4);
@@ -403,6 +418,10 @@ void simulate(string path) {
 	}
 	print("Simulation started ...\n", 1);
 	int current_time = 0;
+	print("Simulation time: ", 4);
+	print(current_time + 1, 4);
+	print("\n", 4);
+	
 	while(!tick()) {
 		current_time++;
 		//cerr << current_time << ": tasks resolved = " << task_resolved << endl;
@@ -413,6 +432,9 @@ void simulate(string path) {
 			print(task_resolved, 3);
 			print("\n", 3);
 		}
+		print("Simulation time: ", 4);
+		print(current_time + 1, 4);
+		print("\n", 4);
 	}
 	current_time++;
 	//cout << current_time << ": tasks resolved = " << task_resolved << " expected = " << task_cnt << ", time without transferring = " << m_t << endl;
