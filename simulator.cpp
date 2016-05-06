@@ -272,8 +272,10 @@ void tick(processing_unit* unit) {
 				print(unit->buffer.front()->id, 4);
 				print(" is sent out from ", 4);
 				print(unit->id, 4);
+				print(" at ", 4);
+				print(ch->out->id, 4);
 				print(" (bits sent: ", 4);
-                print(unit->buffer.front()->content_sie, 4);
+                print(unit->buffer.front()->content_size, 4);
 				print(").\n", 4);
 			    ch->out->abstract_delayer->add_task(unit->buffer.front(), ch->delay);
 				unit->buffer.pop();
@@ -286,6 +288,8 @@ void tick(processing_unit* unit) {
 				print(ch->current_task->id, 4);
 				print(" is currently being transferred out from ", 4);
 				print(unit->id, 4);
+				print(" at ", 4);
+				print(ch->out->id, 4);
 				print(" (current progress: ", 4);
 				print(ch->current_progress, 4);
 				print(").\n", 4);
