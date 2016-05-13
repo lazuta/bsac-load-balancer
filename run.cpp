@@ -68,6 +68,10 @@ void set_config() {
 			if(sscanf(t, "%d", &tmp) == 1) {
 				set_time_output_step(tmp);
 			}
+		} else if (strcmp(s, "simulation") == 0) {
+			if(sscanf(t, "%d", &tmp) == 1) {
+				set_simulation(tmp);
+			}
 		}
 	}	
 }   
