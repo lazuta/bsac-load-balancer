@@ -183,6 +183,7 @@ static balancing_algorithm_t algorithm = PARAMETRIC_FLOW;
 static double alpha = 1; // consensus step size.
 static clock_t scheduling_time = 0; //this variable is used to store scheduling time of algorithms (in clocks)
 static int time_output_step = 1;
+static int simulation = 1;
        
 void read_graph(static_flow_graph* graph);
 
@@ -191,6 +192,8 @@ void set_consensus_step(double step);
 void set_balancing_algorithm(char* algorithm_name);
 
 void set_time_output_step(int step);
+
+void set_simulation(int doornot);
 
 void simulate(string path);
 

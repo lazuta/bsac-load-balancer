@@ -98,7 +98,9 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 	fscanf(f, "%d%d", &n, &m);
 	s = n, t = n + 1;
 	task_cnt = 0;
+	int num = 0;
 	sum_perf = 0;
+	graph->initialize_graph(n + 2, 2 * n + m, s, t);
 	
 	m_t = 0;
 
@@ -112,6 +114,7 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		units.push_back(u);
 		u->perfomance_ptu = p * task_processing_time_expectation;
 		sum_perf += p;
+		task_cnt += q;
 		double load = 0;
 		print("Unit ", 4);
 		print(i, 4);
@@ -122,12 +125,15 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		print("-", 4);
 		print(task_cnt + q - 1, 4);
 		print("\n", 4);
-		for(int j = 0; j < q; ++j) {
-			task* tsk = new task();
-			tsk->current_pu = u;
-			tsk->id = task_cnt++;
-			u->add_task(tsk);
-			load += tsk->processing_time;
+		graph->add_edge(s, i, 0, q);
+		if(simulation != 0) {
+        	for(int j = 0; j < q; ++j) {
+				task* tsk = new task();
+				tsk->current_pu = u;
+				tsk->id = num++;
+				u->add_task(tsk);
+				load += tsk->processing_time;
+			}
 		}
 		m_t = m_t >  load / u->perfomance_ptu ? m_t : load / u->perfomance_ptu;
 	}
@@ -145,7 +151,6 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		units[q - 1]->add_channel(ch);
 	}	
 
-	graph->initialize_graph(n + 2, 2 * n + m, s, t);
 	
 	for(int i = 0; i < n; ++i) {
 		graph->add_edge(i, t, units[i]->perfomance_ptu / task_processing_time_expectation, 0);
@@ -158,8 +163,8 @@ void read_graph(static_flow_graph* graph, FILE* f) {
     }
 
     for(int i = 0; i < n; ++i) {
-		graph->add_edge(s, i, 0, units[i]->buffer.size());
-    }
+    	//graph->add_edge(s, i, 0, units[i]->buffer.size());
+    }		
 }
 
 void calculate_flow(static_flow_graph* graph) {
@@ -265,7 +270,7 @@ void tick(processing_unit* unit) {
 			ch->current_task = NULL;
 		}                                       
 		if(ch->current_task == NULL) {
-			while(!unit->buffer.empty() && ch->transferred_load < ch->scheduled_load && ch->current_progress >= unit->buffer.front()->content_size) {
+			while(!unit->buffer.empty() && ch->current_progress >= unit->buffer.front()->content_size) {
 				ch->current_progress -= unit->buffer.front()->content_size;
 				ch->transferred_load += unit->buffer.front()->content_size;
 				print("Task #", 4);
@@ -297,7 +302,7 @@ void tick(processing_unit* unit) {
 				unit->buffer.pop();
 			}
 			if(ch->scheduled_load == 0) {
-				unit->sch->saturation_ratio[i].first = 1;
+				unit->sch->saturation_ratio[i].first = 100;
 			} else {
 				unit->sch->saturation_ratio[i].first = (double)ch->transferred_load / ch->scheduled_load;        		
 			}
@@ -348,6 +353,10 @@ void set_balancing_algorithm(char* algorithm_name) {
 void set_time_output_step(int step) {
 	if(step <= 0) time_output_step = 1;
 	else time_output_step = step;
+}
+
+void set_simulation(int Do) {
+	simulation = Do;
 }
 
 void simulate(string path) {
@@ -412,6 +421,9 @@ void simulate(string path) {
 	}	
 	*/
 
+	if(simulation == 0) {
+		return;
+	}
 	print("Proceed simulation (y/n)?:", 1);
 	char ch;
 	scanf("%c", &ch);
