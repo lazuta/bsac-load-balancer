@@ -6,20 +6,32 @@
 #include <cstdlib>
 #include <cmath>
 
-#include "utils/rational.h"
+using namespace std;
 
-using namespace std;    
+//#define RATIONAL_FLOW
+#define DOUBLE_FLOW
+
+#ifdef RATIONAL_FLOW
+
+#include "utils/rational.h"
+typedef Rational flow_type;
+
+#endif
+
+#ifdef DOUBLE_FLOW
+typedef double flow_type;
+#endif
 
 class static_flow_graph {
 private:	
 	int *head, *next, *to, *prev, *h, *cur_edge, *active, *inactive, *prevB, *nextB;
-	double *cap, *cap_a, *cap_b, *flow, *ex;
+	flow_type *cap, *cap_a, *cap_b, *flow, *ex;
 	bool *g;
 	bool reversed;
 	int edge, n, m, s, t;
 	int maxheight;
 	double eps;
-	double lambda;
+	flow_type lambda;
 	queue<int> active_vrtx;
 	long long pushCounter;
 	long long relabelCounter;
@@ -44,9 +56,14 @@ private:
 	static const int PUSH_WORK_CONST = 0;
 
 	/**
+	 * Resets the statistic information.
+	 */
+	void clear_stats();
+
+	/**
 	 * Initializes preflow-push algorithm
 	 */
-	void initialize_flow(double L);
+	void initialize_flow(flow_type L);
 	
 
 	/**
@@ -54,14 +71,14 @@ private:
 	 *
 	 * lambda_dif should be non-positive.
 	 */
-	void decrease_cap(double lambda_dif);
+	void decrease_cap(flow_type lambda_dif);
 
 	/**
 	 * Updates the global parameter of capacity functions.
 	 *
 	 * Essentially the same as above one. This one should be prefferable.
 	 */
-	void update_lambda(double lambda);
+	void update_lambda(flow_type lambda);
 	
 	/**
 	 * Pushes a flow on arc 'e' incident to 'v' (see preflow-push algorithm).
@@ -86,7 +103,7 @@ private:
 	/**
 	 * Adds a single arc (a, b) without a reverse arc.
 	 */
-	void _add_edge(int a, int b, double A, double B);
+	void _add_edge(int a, int b, flow_type A, flow_type B);
 
 	/**
 	 * Performs gap heuristic.
@@ -106,19 +123,19 @@ public:
 	 * sink vertex T
 	 * and feasible error e.
 	 */
-	void initialize_graph(int N, int M, int S, int T);//, double e);
+	void initialize_graph(int N, int M, int S, int T);//, flow_type e);
 
 	/**
 	 * Adds an arc (a, b) with linear depending capacity function of form At+B.
 	 */	
-	void add_edge(int a, int b, double A, double B);
+	void add_edge(int a, int b, flow_type A, flow_type B);
 	
 	/**
 	 * Discharges the vertices.
 	 */    
-    double max_flow();
+    flow_type max_flow();
 
-    double max_flow(int stage);
+    flow_type max_flow(int stage);
 
 	
 	/**
@@ -143,9 +160,13 @@ public:
 	 * values close to zero (the closer the value to zero the more impact calculation 
 	 * errors will have).
 	 */
-	double leftmost_breakpoint(double init_lambda);
+	flow_type leftmost_breakpoint(flow_type init_lambda);
+	
+	flow_type breakpoint_GGT(flow_type init_lambda);
 
-	double get_flow(int idx);
+	flow_type breakpoint_SIMPLE(flow_type init_lambda);
+
+	flow_type get_flow(int idx);
 
 	void show(int priority);
 
