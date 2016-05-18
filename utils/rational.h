@@ -9,6 +9,10 @@
 #ifndef RATIONAL_H
 #define RATIONAL_H
 
+#define __EUCLID_
+//#define __TRIVIAL_GCD_
+
+
 class Rational {
 public:
 	long long nom;

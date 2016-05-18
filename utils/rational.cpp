@@ -5,6 +5,7 @@
 
 #include "rational.h"
 
+#ifdef __EUCLID_
 long long gcd(long long a, long long b) {
     long long c;
 	while (b != 0) {
@@ -16,7 +17,19 @@ long long gcd(long long a, long long b) {
     	return -a;
     }
     return a;
-}       
+}
+#endif
+
+#ifdef __TRIVIAL_GCD_
+/**
+ * Note that trivial gcd works only if a=b.
+ */
+long long gcd(long long a, long long b) {
+	if (a == b || a == -b) return a > 0 ? a : -a;
+	return 1;
+}
+#endif
+    
 
 Rational::Rational() {
 	nom = 0;
