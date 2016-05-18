@@ -120,12 +120,14 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		print(i, 4);
 		print(" is assigned with ", 4);
 		print(q, 4);
-		print(" task, id's: ", 4);
+		print(" tasks, id's: ", 4);
 		print(task_cnt, 4);
 		print("-", 4);
 		print(task_cnt + q - 1, 4);
 		print("\n", 4);
-		graph->add_edge(s, i, 0, q);
+		if(q > 0) {
+			graph->add_edge(s, i, 0, q);
+		}
 		if(simulation != 0) {
         	for(int j = 0; j < q; ++j) {
 				task* tsk = new task();
@@ -151,7 +153,6 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		units[q - 1]->add_channel(ch);
 	}	
 
-	
 	for(int i = 0; i < n; ++i) {
 		graph->add_edge(i, t, units[i]->perfomance_ptu / task_processing_time_expectation, 0);
     }
@@ -170,7 +171,14 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 void calculate_flow(static_flow_graph* graph) {
     print("Flow calculation ...\n", 2);
     scheduling_time = clock();
+    //sum_perf = 4;
+    //task_cnt = 993;
+#ifdef DOUBLE_FLOW
     tau = 1 / graph->leftmost_breakpoint((double)sum_perf /  task_cnt);
+#endif
+#ifdef RATIONAL_FLOW
+	tau = 1 / graph->leftmost_breakpoint(Rational(sum_perf, task_cnt));
+#endif
     print("Done\n", 2);
 	print("Flow calculation took ", 2);
 	print((double)(scheduling_time = clock() - scheduling_time) / CLOCKS_PER_SEC, 2);
@@ -270,7 +278,7 @@ void tick(processing_unit* unit) {
 			ch->current_task = NULL;
 		}                                       
 		if(ch->current_task == NULL) {
-			while(!unit->buffer.empty() && ch->current_progress >= unit->buffer.front()->content_size) {
+			while(!unit->buffer.empty() && ch->transferred_load < ch->scheduled_load && ch->current_progress >= unit->buffer.front()->content_size) {
 				ch->current_progress -= unit->buffer.front()->content_size;
 				ch->transferred_load += unit->buffer.front()->content_size;
 				print("Task #", 4);
@@ -359,6 +367,23 @@ void set_simulation(int Do) {
 	simulation = Do;
 }
 
+void set_processing_time_e(int t) {
+	task_processing_time_expectation = t;
+}
+
+void set_processing_time_v(int t) {
+	task_processing_time_variance = t;
+}
+
+void set_content_size_e(int t) {
+	task_content_size_expectation = t;
+}
+
+void set_content_size_v(int t) {
+	task_content_size_variance = t;
+}	
+
+
 void simulate(string path) {
 	FILE* _f;
 	print(path, 4);
@@ -405,9 +430,16 @@ void simulate(string path) {
     			print(", ", 4);
     			print(units[i]->outgoing_channels[j]->id, 4);
 				print(") = ", 4);
-				print(floor((graph->get_flow(n + num) * tau) + 0.5) * task_content_size_expectation, 4);
+				double f; 
+#ifdef RATIONAL_FLOW
+				f = (graph->get_flow(2 * n + num) * tau).toDouble();
+#endif
+#ifdef DOUBLE_FLOW
+				f = (graph->get_flow(2 * n + num) * tau);
+#endif                                          				
+				print(ceil(f) * task_content_size_expectation, 4);
 				print("\n", 4);
-    			units[i]->outgoing_channels[j]->scheduled_load = floor((graph->get_flow(n + num) * tau) + 0.5) * task_content_size_expectation;
+    			units[i]->outgoing_channels[j]->scheduled_load = ceil(f) * task_content_size_expectation;
     			//cerr << "Scheduled load: " << units[i]->outgoing_channels[j]->scheduled_load << " " << graph->get_flow(n + num) * tau << endl;
     			num++; 
     		}
@@ -437,7 +469,10 @@ void simulate(string path) {
 	print("Simulation time: ", 4);
 	print(current_time + 1, 4);
 	print("\n", 4);
-	
+	print("Time output step = ", 2);
+	print(time_output_step, 2);
+	print("\n", 2);
+
 	while(!tick()) {
 		current_time++;
 		//cerr << current_time << ": tasks resolved = " << task_resolved << endl;

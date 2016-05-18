@@ -178,7 +178,7 @@ static vector<processing_unit*> units;
 static long long sum_perf = 0;
 static int n = 0; // number of processing units.
 static int m = 0; // number of channels.
-static double tau = 0; // expected optimal time.
+static flow_type tau = 0; // expected optimal time.
 static balancing_algorithm_t algorithm = PARAMETRIC_FLOW;
 static double alpha = 1; // consensus step size.
 static clock_t scheduling_time = 0; //this variable is used to store scheduling time of algorithms (in clocks)
@@ -194,6 +194,14 @@ void set_balancing_algorithm(char* algorithm_name);
 void set_time_output_step(int step);
 
 void set_simulation(int doornot);
+
+void set_processing_time_e(int t);
+
+void set_processing_time_v(int t);
+
+void set_content_size_e(int t);
+
+void set_content_size_v(int t);
 
 void simulate(string path);
 
