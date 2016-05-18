@@ -12,7 +12,6 @@
 #include "simulator.h"
 #include "utils/logger.h"
 
-
 using namespace std;
 
 void set_config() {
@@ -44,19 +43,19 @@ void set_config() {
 			}
 		} else if (strcmp(s, "task_processing_time_expectation") == 0) {
 			if(sscanf(t, "%d", &tmp) == 1) {
-				task_processing_time_expectation = tmp;
+				set_processing_time_e(tmp);
 			}
 		} else if (strcmp(s, "task_processing_time_variance") == 0) {
 			if(sscanf(t, "%d", &tmp) == 1) {
-				task_processing_time_variance = tmp;
+				set_processing_time_v(tmp);
 			}
 		} else if (strcmp(s, "task_content_size_expectation") == 0) {
 			if(sscanf(t, "%d", &tmp) == 1) {
-				task_content_size_expectation = tmp;
+				set_content_size_e(tmp);
 			}
 		} else if (strcmp(s, "task_content_size_variance") == 0) {
 			if(sscanf(t, "%d", &tmp) == 1) {
-				task_content_size_variance = tmp;
+				set_content_size_v(tmp);
 			}
 		} else if (strcmp(s, "balancing_algorithm") == 0) {
 			set_balancing_algorithm(t);
