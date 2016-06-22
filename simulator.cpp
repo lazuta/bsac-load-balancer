@@ -114,7 +114,6 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		units.push_back(u);
 		u->perfomance_ptu = p * task_processing_time_expectation;
 		sum_perf += p;
-		task_cnt += q;
 		double load = 0;
 		print("Unit ", 4);
 		print(i, 4);
@@ -125,9 +124,10 @@ void read_graph(static_flow_graph* graph, FILE* f) {
 		print("-", 4);
 		print(task_cnt + q - 1, 4);
 		print("\n", 4);
-		if(q > 0) {
+		task_cnt += q;
+		//if(q > 0) {
 			graph->add_edge(s, i, 0, q);
-		}
+		//}
 		if(simulation != 0) {
         	for(int j = 0; j < q; ++j) {
 				task* tsk = new task();
