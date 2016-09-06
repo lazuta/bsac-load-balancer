@@ -7,7 +7,7 @@ const double eps = 1e-12;
 
 bool is_zero(flow_type f) {
 #ifdef RATIONAL_FLOW
-	return f == 0;
+	return (f == 0);
 #endif
 #ifdef DOUBLE_FLOW
 	return fabs(f) < eps;
@@ -495,7 +495,7 @@ bool static_flow_graph::has_flow(int v) {
 
 flow_type static_flow_graph::breakpoint_SIMPLE(flow_type init_lambda) {
 #ifdef DEBUG
-	print("Stage 1\n", 1);
+	print("Mode: simple; Stage 1\n", 1);
 #endif	
 	clear_stats();
 	reverse_flow();
@@ -646,7 +646,7 @@ flow_type static_flow_graph::breakpoint_SIMPLE(flow_type init_lambda) {
  */
 flow_type static_flow_graph::breakpoint_GGT(flow_type init_lambda) {
 #ifdef DEBUG
-	print("Stage 1\n", 1);
+	print("Mode: GGT; Stage 1\n", 1);
 #endif	
 	initialize_flow(init_lambda);
 	reverse_flow();
