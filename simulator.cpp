@@ -25,6 +25,7 @@ bool scheduler::is_saturated() {
 
 scheduler::scheduler() {
 	task_bound = -1;
+	excess = 0;
 }
 
 task::task() {
@@ -246,6 +247,8 @@ void tick(processing_unit* unit) {
 		clock_t clck = clock();
 		for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
     		channel* ch = unit->sch->saturation_ratio[i].second;
+    		ch->transferred_load = 0;
+    		
 			if(unit->buffer.size() * ch->out->perfomance_ptu > 
     			unit->perfomance_ptu * ch->out->buffer.size()) {
     			ch->scheduled_load = alpha * (- ch->out->buffer.size() / ch->out->perfomance_ptu
@@ -260,12 +263,41 @@ void tick(processing_unit* unit) {
     	scheduling_time += (clock() - clck);            	
 		sort(unit->sch->saturation_ratio.begin(), unit->sch->saturation_ratio.end());		
 	}
+
+	if(algorithm == ADAPTIVE_FLOW) {
+		clock_t clck = clock();
+		for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
+    		channel* ch = unit->sch->saturation_ratio[i].second;
+    		ch->transferred_load = 0;
+    		
+			long long new_f;
+			if(ch->out->buffer.size() + unit->buffer.size() == 0) {
+				new_f = 0;
+			} else {
+				new_f = (-ch->out->sch->excess * unit->buffer.size() * unit->buffer.size() + ch->out->buffer.size() * ch->out->buffer.size() * unit->sch->excess) 
+					/ ((long long)ch->out->buffer.size() * (long long)ch->out->buffer.size() + (long long)unit->buffer.size() * (long long)unit->buffer.size());
+				if(ch->scheduled_load + new_f * task_content_size_expectation < 0) new_f = -ch->scheduled_load / task_content_size_expectation;
+				if(ch->scheduled_load + new_f * task_content_size_expectation > ch->capacity_ptu) 
+					new_f = (ch->capacity_ptu - ch->scheduled_load) / task_content_size_expectation;
+			}
+			ch->out->sch->excess += /*ch->scheduled_load / task_content_size_expectation*/ new_f;
+			unit->sch->excess -= /*ch->scheduled_load / task_content_size_expectation*/ new_f;
+			ch->scheduled_load += new_f * task_content_size_expectation;
+
+		//if(ch->scheduled_load) cerr << ch->scheduled_load << "is scheduled to transmit from " << unit->id  << " to " << ch->out->id << endl;
+        }
+    	scheduling_time += (clock() - clck);            	
+		sort(unit->sch->saturation_ratio.begin(), unit->sch->saturation_ratio.end());
+	}
 	
 	for(int i = 0; i < unit->sch->saturation_ratio.size(); ++i) {
 		channel* ch = unit->sch->saturation_ratio[i].second;
 		prev = ch->current_progress;
 		ch->current_progress += ch->capacity_ptu;
 		if(ch->current_task != NULL && ch->current_progress >= ch->current_task->content_size) {
+			/*if(ch->scheduled_load - ch->transferred_load < ch->current_task->content_size - ch->current_progress) {
+				ch->scheduled_load = ch->current_task->content_size - ch->current_progress + ch->transferred_load;
+			}*/
 			ch->current_progress -= ch->current_task->content_size;
 			print("Task #", 4);
 			print(ch->current_task->id, 4);
@@ -339,10 +371,22 @@ void tick(processing_unit* unit) {
 
 bool tick() {
 	bool done = true;
+	if(algorithm == ADAPTIVE_FLOW) {
+	for(int i = 0; i < units.size(); ++i) {
+		print("Excess of node #", 4);
+		print(i, 4);
+		print(" = ", 4);
+		print(units[i]->sch->excess, 4);
+		print(" // ", 4);
+		print(units[i]->buffer.size(), 4);
+		print("\n", 4);
+	}		
+	}
 	for(int i = 0; i < units.size(); ++i) {
 		tick(units[i]);
 		if(units[i]->status > 1) done = false;
 	}
+
 	return done;	
 }   
 
@@ -351,10 +395,12 @@ void set_consensus_step(double step) {
 }
 
 void set_balancing_algorithm(char* algorithm_name) {
-	if(strcmp(algorithm_name, "parametric_flow") == 0) {
-		algorithm = PARAMETRIC_FLOW;
+	if(strcmp(algorithm_name, "adaptive_flow") == 0) {
+		algorithm = ADAPTIVE_FLOW;
 	} else if(strcmp(algorithm_name, "consensus") == 0) {
 		algorithm = CONSENSUS;
+	} else {
+		algorithm = PARAMETRIC_FLOW;
 	}
 }
 
@@ -397,11 +443,13 @@ void simulate(string path) {
 	print("Balancing algorithm in use: ", 2);
 	if(algorithm == PARAMETRIC_FLOW) {
 		print("parametric flow\n", 2);
-	} else {
+	} else if (algorithm == CONSENSUS) {
 		print("consensus\n", 2);
 		print("Step size is ", 2);
 		print(alpha, 2);
 		print("\n", 2);
+	} else {
+		print("adaptive flow\n", 2);
 	}                  	
 
 	static_flow_graph* graph;
@@ -445,6 +493,33 @@ void simulate(string path) {
     		}
     	}       
     }	
+    if(algorithm == ADAPTIVE_FLOW) {
+    	for(int i = 0; i < units.size(); ++i) {
+    		units[i]->sch->excess = -units[i]->perfomance_ptu / task_processing_time_expectation;
+    		for(int j = 0; j < units[i]->outgoing_channels.size(); ++j) {
+    			units[i]->outgoing_channels[j]->scheduled_load = 0;
+    		}
+    	}
+
+/*    	for(int tt = 0; tt < 30; ++tt) {
+    		for(int j = 0; j < units.size(); ++j)
+    		for(int i = 0; i < units[j]->sch->saturation_ratio.size(); ++i) {
+    		channel* ch = units[j]->sch->saturation_ratio[i].second;
+    		
+			int new_f;
+			if(ch->out->buffer.size() == 0) {
+				new_f = ch->capacity_ptu;
+			} else {
+				new_f = (ch->out->sch->excess * units[j]->buffer.size()) / ch->out->buffer.size() - units[j]->sch->excess;
+				if(new_f < 0) new_f = 0;
+				if(new_f > ch->capacity_ptu) new_f = ch->capacity_ptu;
+			}
+			ch->out->sch->excess -= ch->scheduled_load / task_content_size_expectation - new_f;
+			units[j]->sch->excess += ch->scheduled_load / task_content_size_expectation - new_f;
+			ch->scheduled_load = new_f * task_content_size_expectation;
+    		}
+    	}*/
+    }
     print("Milestone 2\n", 4);
 
     /*
@@ -456,9 +531,9 @@ void simulate(string path) {
 	if(simulation == 0) {
 		return;
 	}
-	print("Proceed simulation (y/n)?:", 1);
-	char ch;
-	scanf("%c", &ch);
+	//print("Proceed simulation (y/n)?:", 1);
+	char ch = 'y';
+	//scanf("%c", &ch);
 	if('A' <= ch && ch <= 'Z') ch += 'a' - 'A';
 	if(ch != 'y') {
 		print("Simulation aborted\n", 1);
@@ -499,13 +574,13 @@ void simulate(string path) {
 	print(m_t, 2);
 	print("\n", 2);
 
-	if(algorithm == CONSENSUS) {
+	if(algorithm == CONSENSUS || algorithm == ADAPTIVE_FLOW) {
 		print("Total scheduling time ", 2);
 		print((double)scheduling_time / CLOCKS_PER_SEC, 2);
 		print("s.(", 2);
 		print((double)scheduling_time, 2);
 		print(")\n", 2);
-	}
+	} 
 
 
 	int task_left_1 = 0;
