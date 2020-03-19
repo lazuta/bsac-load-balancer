@@ -11,6 +11,3 @@ utils.o:
 	$(CC) $(CCFLAGS) -c -orational.o utils/rational.cpp
 clean:
 	$(RM) *.o run.exe
-
-
-

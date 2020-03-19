@@ -378,7 +378,7 @@ bool tick() {
 		print(" = ", 4);
 		print(units[i]->sch->excess, 4);
 		print(" // ", 4);
-		print(units[i]->buffer.size(), 4);
+		print(static_cast<int>(units[i]->buffer.size()), 4);
 		print("\n", 4);
 	}		
 	}

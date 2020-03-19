@@ -159,6 +159,7 @@ class scheduler {
 public:	
 	vector<pair<double, channel*> > saturation_ratio;
 	int task_bound;
+	int excess;
 
    	bool is_saturated();
    	
@@ -166,7 +167,7 @@ public:
 };
 
 
-enum balancing_algorithm_t {PARAMETRIC_FLOW, CONSENSUS};
+enum balancing_algorithm_t {PARAMETRIC_FLOW, CONSENSUS, ADAPTIVE_FLOW};
 
 /**
  * Simulation global variables.
